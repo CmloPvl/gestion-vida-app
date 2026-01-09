@@ -1,0 +1,26 @@
+generator client {
+  provider      = "prisma-client-js"
+  engineType    = "library"
+  binaryTargets = ["native"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ... tus modelos siguen igual
+
+model Transaccion {
+  id            String   @id @default(uuid())
+  nombre        String
+  monto         Float
+  tipo          String
+  clasificacion String
+  fecha         DateTime @default(now())
+  completado    Boolean  @default(true)
+  notas         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
