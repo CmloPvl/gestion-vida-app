@@ -11,34 +11,32 @@ datasource db {
 }
 
 // --- MODELO DE USUARIO ---
-// Es el corazón del sistema. Todo lo que registres colgará de aquí.
 model User {
   id                String            @id @default(uuid())
   name              String?
   email             String            @unique
-  password          String            // Almacenaremos el hash de la clave
+  password          String            
   image             String?
   
-  // Relaciones: Si borras el usuario, se borra su info (Cascade)
-  transacciones     Transaccion[]
+  transacciones      Transaccion[]
   itemsEstrategicos EstrategicoItem[]
 
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 }
 
-// --- MODELO DE TRANSACCIONES (Tu tabla original mejorada) ---
+// --- MODELO DE TRANSACCIONES ---
 model Transaccion {
   id            String   @id @default(uuid())
   nombre        String
   monto         Float
-  tipo          String
-  clasificacion String
+  tipo          String   // "INGRESO" o "GASTO"
+  clasificacion String   // "VIDA", "ACTIVO", "PASIVO"
+  metodo        String   @default("EFECTIVO") // <--- NUEVO CAMPO AGREGADO
   fecha         DateTime @default(now())
   completado    Boolean  @default(true)
   notas         String?
   
-  // Vínculo obligatorio con un Usuario
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -47,15 +45,13 @@ model Transaccion {
 }
 
 // --- MODELO PARA EL RESUMEN ESTRATÉGICO ---
-// Para guardar Ingresos, Gastos de vida, Activos y Pasivos de forma permanente
 model EstrategicoItem {
   id        String   @id @default(uuid())
   nombre    String
-  monto     Float    // Valor total (ej: valor de la propiedad o deuda total)
-  subMonto  Float?   @default(0) // Flujo mensual (ej: arriendo que recibes o cuota que pagas)
+  monto     Float    
+  subMonto  Float?   @default(0) 
   seccion   String   // "ingresos", "gastos", "activos", "pasivos"
   
-  // Vínculo obligatorio con un Usuario
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

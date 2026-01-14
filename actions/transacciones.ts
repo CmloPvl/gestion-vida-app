@@ -1,121 +1,129 @@
 "use server"
 
-import { salvarTransaccion, prisma } from "../lib/db-services"
+import db from "@/prisma/client" 
+import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
 
 /**
- * 1. GUARDAR: Envía la venta a Supabase
+ * 1. GUARDAR: Crea un movimiento en la DB
  */
-export async function crearTransaccion(data: any) {
+export async function crearTransaccion(data: {
+  nombre: string;
+  monto: number;
+  tipo: string;      
+  categoria: string; 
+  metodo: string;
+  fecha: Date;
+}) {
   try {
-    console.log("-----------------------------------------");
-    console.log("🛒 NUEVA VENTA DETECTADA - URUGUAY 660");
-    console.log("📦 Producto/Servicio:", data.nombre);
-    console.log("💰 Monto: $", data.monto);
-    
-    const resultado = await salvarTransaccion(data);
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "No autorizado" };
 
-    console.log("✅ GUARDADO EXITOSO EN SUPABASE. ID:", resultado.id);
-    console.log("-----------------------------------------");
+    if (!data.nombre || data.monto <= 0 || !data.categoria) {
+      return { success: false, error: "Datos incompletos o monto inválido." };
+    }
+
+    await db.transaccion.create({
+      data: {
+        nombre: data.nombre, 
+        monto: data.monto,
+        tipo: data.tipo,           
+        clasificacion: data.categoria, 
+        metodo: data.metodo,       
+        fecha: data.fecha,   
+        userId: session.user.id,
+        completado: true
+      },
+    });
 
     revalidatePath("/finanzas");
+    revalidatePath("/");
     return { success: true };
-    
-  } catch (error: any) {
-    console.error("❌ ERROR AL GUARDAR:", error.message);
-    return { 
-      success: false, 
-      error: "No se pudo guardar la venta." 
-    };
+  } catch (error) {
+    console.error("❌ ERROR AL GUARDAR:", error);
+    return { success: false, error: "Error interno de base de datos." };
   }
 }
 
 /**
- * 2. LEER: Trae las ventas de una fecha específica
- * Si no se pasa fecha, por defecto usa "hoy".
+ * 2. LEER: Trae los movimientos del día seleccionado
  */
-export async function obtenerTransaccionesPorFecha(fechaBase?: Date) {
+export async function obtenerTransaccionesPorFecha(fechaBase: Date) {
   try {
-    // Si no viene fecha, usamos el momento actual
-    const fecha = fechaBase || new Date();
-    
-    // Configuramos el inicio del día (00:00:00)
-    const inicioDia = new Date(fecha);
-    inicioDia.setHours(0, 0, 0, 0);
+    const session = await auth();
+    if (!session?.user?.id) return [];
 
-    // Configuramos el fin del día (23:59:59)
-    const finDia = new Date(fecha);
+    const inicioDia = new Date(fechaBase);
+    inicioDia.setHours(0, 0, 0, 0);
+    
+    const finDia = new Date(fechaBase);
     finDia.setHours(23, 59, 59, 999);
 
-    const transacciones = await prisma.transaccion.findMany({
+    return await db.transaccion.findMany({
       where: {
-        fecha: {
-          gte: inicioDia,
-          lte: finDia,
-        },
+        userId: session.user.id,
+        fecha: { gte: inicioDia, lte: finDia }
       },
-      orderBy: {
-        fecha: "desc",
-      },
+      orderBy: { fecha: "desc" }
     });
-
-    return transacciones.map((t) => ({
-      id: t.id,
-      nombre: t.nombre,
-      monto: Number(t.monto),
-      categoria: String(t.clasificacion), 
-      tipo: t.tipo as "INGRESO" | "GASTO",
-      completado: t.completado,
-    }));
   } catch (error) {
-    console.error("❌ ERROR AL LEER FLUJOS POR FECHA:", error);
+    console.error("❌ ERROR AL LEER:", error);
     return [];
   }
 }
 
 /**
- * 3. RESUMEN: Totales del mes
+ * 3. RESUMEN: Totales mensuales para el BalanceCard
  */
 export async function obtenerResumenMes() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { ingresos: 0, gastos: 0 };
+
     const ahora = new Date();
     const primerDiaMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
 
-    const transacciones = await prisma.transaccion.findMany({
+    const transacciones = await db.transaccion.findMany({
       where: {
-        fecha: {
-          gte: primerDiaMes,
-        },
+        userId: session.user.id,
+        fecha: { gte: primerDiaMes }
       },
     });
 
     const ingresos = transacciones
       .filter(t => t.tipo === "INGRESO")
-      .reduce((sum, t) => sum + Number(t.monto), 0);
+      .reduce((sum, t) => sum + t.monto, 0);
 
     const gastos = transacciones
       .filter(t => t.tipo === "GASTO")
-      .reduce((sum, t) => sum + Number(t.monto), 0);
+      .reduce((sum, t) => sum + t.monto, 0);
 
     return { ingresos, gastos };
   } catch (error) {
-    console.error("❌ ERROR AL CALCULAR RESUMEN:", error);
     return { ingresos: 0, gastos: 0 };
   }
 }
 
-// En actions/transacciones.ts
-
+/**
+ * 4. ELIMINAR: Borra una transacción específica
+ */
 export async function eliminarTransaccion(id: string) {
   try {
-    await prisma.transaccion.delete({
-      where: { id }
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "No autorizado" };
+
+    await db.transaccion.delete({
+      where: { 
+        id: id,
+        userId: session.user.id
+      }
     });
-    // Esto refresca la página automáticamente al borrar
+
     revalidatePath("/finanzas");
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     console.error("❌ ERROR AL ELIMINAR:", error);
-    return { success: false };
+    return { success: false, error: "No se pudo eliminar." };
   }
 }

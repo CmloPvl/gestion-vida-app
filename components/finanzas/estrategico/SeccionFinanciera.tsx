@@ -4,7 +4,7 @@ import { Plus, Trash2, Info } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { FinItem } from "@/app/hooks/use-estrategico"
+import { FinItem } from "@/hooks/use-estrategico"
 import { cn } from "@/lib/utils"
 
 interface SeccionProps {
