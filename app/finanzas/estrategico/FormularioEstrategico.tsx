@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useState, useTransition } from "react"
+import React, { useState } from "react"
 import { Plus, Loader2 } from "lucide-react"
+import { Plus as PlusIcon, Loader2 as LoaderIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -9,54 +10,58 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogTrigger,
-  DialogDescription 
+  DialogTrigger 
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { useRouter } from "next/navigation" 
 import { createEstrategicoItem } from "@/actions/estrategico"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 
-export function FormularioEstrategico({ title, needsSubMonto }: { title: string, needsSubMonto?: boolean }) {
+export function FormularioEstrategico({ 
+  title, 
+  needsSubMonto 
+}: { 
+  title: string, 
+  needsSubMonto: boolean 
+}) {
   const [open, setOpen] = useState(false)
-  const [isPending, startTransition] = useTransition()
   const [form, setForm] = useState({ nombre: "", monto: "", subMonto: "" })
-  const router = useRouter()
+  const queryClient = useQueryClient()
 
-  const obtenerSeccion = (t: string): "ingresos" | "gastos" | "activos" | "pasivos" => {
-    const text = t.toLowerCase();
-    if (text.includes("activo") && !text.includes("patrimonio")) return "ingresos";
-    if (text.includes("costo") || text.includes("gasto")) return "gastos";
-    if (text.includes("patrimonio") || text.includes("activo")) return "activos";
-    return "pasivos";
-  }
-
-  const handleSubmit = async () => {
-    const m = Number(form.monto)
-    const s = Number(form.subMonto)
-
-    if (!form.nombre || m <= 0) {
-      toast.error("Datos inválidos", { description: "El nombre y monto son obligatorios." })
-      return
-    }
-
-    startTransition(async () => {
-      const seccion = obtenerSeccion(title)
-      
-      const result = await createEstrategicoItem({
-        nombre: form.nombre,
-        monto: Math.abs(m),
-        subMonto: needsSubMonto ? s : 0,
-        seccion: seccion
-      })
-
+  const mutation = useMutation({
+    mutationFn: createEstrategicoItem,
+    onSuccess: (result) => {
       if (result.success) {
-        toast.success("¡Guardado!", { description: `${form.nombre} registrado.` })
+        queryClient.invalidateQueries({ queryKey: ["estrategico"] })
+        toast.success("¡Agregado con éxito!")
         setForm({ nombre: "", monto: "", subMonto: "" })
         setOpen(false)
-        router.refresh() // Actualiza la lista automáticamente
       } else {
-        toast.error("Error", { description: result.error })
+        toast.error(result.error || "Error al guardar")
       }
+    }
+  })
+
+  const handleSubmit = async () => {
+    const montoNum = Number(form.monto)
+    const subMontoNum = form.subMonto ? Number(form.subMonto) : montoNum
+
+    if (!form.nombre.trim()) return toast.error("Escribe un nombre")
+    if (isNaN(montoNum) || montoNum <= 0) return toast.error("Monto base inválido")
+
+    // Mapeo preciso para el Schema
+    let seccionFinal: "ingresos" | "gastos" | "activos" | "pasivos" = "ingresos";
+    const t = title.toLowerCase();
+
+    if (t.includes("flujo activo") || t.includes("ingreso")) seccionFinal = "ingresos";
+    else if (t.includes("costo de vida") || t.includes("gasto")) seccionFinal = "gastos";
+    else if (t.includes("patrimonio") || t.includes("activo")) seccionFinal = "activos";
+    else if (t.includes("obligaciones") || t.includes("pasivo")) seccionFinal = "pasivos";
+
+    mutation.mutate({
+      nombre: form.nombre.trim(),
+      monto: montoNum,
+      subMonto: subMontoNum,
+      seccion: seccionFinal 
     })
   }
 
@@ -64,61 +69,60 @@ export function FormularioEstrategico({ title, needsSubMonto }: { title: string,
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button 
-          variant="ghost" 
-          size="icon" 
-          className="rounded-2xl bg-white shadow-sm border border-slate-100 h-11 w-11 active:scale-90"
+          className="rounded-2xl shadow-sm h-11 w-11 p-0 bg-slate-900 hover:bg-slate-800 text-white active:scale-90 transition-all border-none"
         >
-          <Plus size={22} className="text-slate-900" />
+          <PlusIcon size={18} />
         </Button>
       </DialogTrigger>
-      <DialogContent className="rounded-[2.5rem] w-[94%] max-w-sm border-none shadow-2xl p-8 bg-white">
+      
+      <DialogContent className="rounded-[2.5rem] w-[94%] max-w-sm p-8 bg-white border-none shadow-2xl">
         <DialogHeader className="mb-4">
           <DialogTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
-            Registrar en {title}
+            Añadir a {title}
           </DialogTitle>
-          <DialogDescription className="text-center text-[10px] text-slate-300 uppercase">
-            Añade un nuevo registro estratégico
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <Input 
-            placeholder="Concepto (ej: Depto, Sueldo)" 
-            value={form.nombre} 
-            disabled={isPending}
-            onChange={(e) => setForm({...form, nombre: e.target.value})} 
-            className="rounded-2xl bg-slate-50 border-none h-14 px-5 font-bold" 
-          />
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 ml-2 uppercase">Valor Total</label>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Nombre</label>
+            <Input 
+              placeholder="Ej: Ahorros, Crédito..." 
+              value={form.nombre} 
+              onChange={(e) => setForm({...form, nombre: e.target.value})} 
+              className="rounded-2xl bg-slate-50 border-none h-14 px-5 font-bold" 
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Monto Base ($)</label>
             <Input 
               type="number" 
               placeholder="0" 
-              disabled={isPending}
               value={form.monto} 
               onChange={(e) => setForm({...form, monto: e.target.value})} 
               className="rounded-2xl bg-slate-50 border-none h-14 px-5 font-bold text-lg" 
             />
           </div>
+
           {needsSubMonto && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 ml-2 uppercase">Flujo Mensual</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-indigo-400 px-1">Valor Actual ($)</label>
               <Input 
                 type="number" 
                 placeholder="0" 
-                disabled={isPending}
                 value={form.subMonto} 
                 onChange={(e) => setForm({...form, subMonto: e.target.value})} 
-                className="rounded-2xl bg-slate-50 border-none h-14 px-5 font-bold text-lg text-indigo-600" 
+                className="rounded-2xl bg-indigo-50/50 border-none h-14 px-5 font-bold text-lg text-indigo-600 focus:ring-1 ring-indigo-200" 
               />
             </div>
           )}
+
           <Button 
             onClick={handleSubmit} 
-            disabled={isPending}
-            className="w-full h-16 rounded-[2rem] bg-slate-900 font-black text-white shadow-xl mt-4 uppercase tracking-widest text-[11px] active:scale-95 transition-all"
+            disabled={mutation.isPending}
+            className="w-full h-16 rounded-[2rem] bg-slate-900 font-black text-white shadow-xl mt-4 uppercase tracking-widest text-[11px] active:scale-95 transition-all border-none"
           >
-            {isPending ? <Loader2 className="animate-spin" size={18} /> : "Confirmar"}
+            {mutation.isPending ? <LoaderIcon className="animate-spin" size={18} /> : "Confirmar"}
           </Button>
         </div>
       </DialogContent>

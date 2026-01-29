@@ -1,12 +1,8 @@
 "use client"
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
-import { toast } from "sonner";
-// CAMBIO: Se reemplaza ShieldLock por ShieldCheck
-import { LogIn, UserPlus, ShieldCheck } from "lucide-react"; 
+import { LogIn, UserPlus, ShieldCheck, Eye, EyeOff, CheckCircle2 } from "lucide-react"; 
+import { FcGoogle } from "react-icons/fc";
 import { cn } from "@/lib/utils";
-import { registrarUsuario } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -16,133 +12,159 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from "@/components/ui/dialog";
+import { useAuthForm } from "@/hooks/use-auth-form";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 export function AuthModal({ type }: { type: 'login' | 'register' }) {
-  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  
+  // Conectamos el cierre automático: al terminar con éxito, setOpen pasa a false
+  const { loading, errors, handleSubmit, handleGoogleAuth } = useAuthForm(type, () => setOpen(false));
+  
+  const searchParams = useSearchParams();
+  const [isVerified, setIsVerified] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
-
-    const formData = new FormData(event.currentTarget);
-
-    if (type === 'register') {
-      try {
-        const result = await registrarUsuario(formData);
-        if (result.error) {
-          toast.error("Error", { description: result.error });
-          setLoading(false);
-        } else {
-          toast.success("¡Cuenta creada!", { description: "Iniciando sesión..." });
-          await signIn("credentials", {
-            email: formData.get("email") as string,
-            password: formData.get("password") as string,
-            callbackUrl: "/"
-          });
-        }
-      } catch (err) {
-        toast.error("Error de conexión");
-        setLoading(false);
-      }
-    } else {
-      const result = await signIn("credentials", {
-        email: formData.get("email") as string,
-        password: formData.get("password") as string,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        toast.error("Error", { description: "Credenciales inválidas" });
-        setLoading(false);
-      } else {
-        toast.success("Bienvenido a Gestión Vida");
-        window.location.reload();
-      }
+  useEffect(() => {
+    if (searchParams.get("verified") === "true") {
+      setIsVerified(true);
     }
-  }
+  }, [searchParams]);
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button 
           variant={type === 'login' ? 'default' : 'outline'} 
           className={cn(
-            "w-full h-14 rounded-2xl font-bold gap-3 transition-all active:scale-95",
+            "w-full h-14 rounded-2xl font-bold gap-3 active:scale-95 transition-all shadow-sm", 
             type === 'login' 
-              ? "bg-slate-900 text-white shadow-xl shadow-slate-200 hover:bg-slate-800" 
-              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+              ? "bg-slate-900 text-white hover:bg-black" 
+              : "bg-white text-slate-600 border-slate-200"
           )}
         >
           {type === 'login' ? <LogIn size={18} /> : <UserPlus size={18} />}
-          {type === 'login' ? 'Entrar al Sistema' : 'Empezar Gratis'}
+          {type === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="rounded-[2.5rem] w-[92%] max-w-sm border-none shadow-2xl p-8 bg-white">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader className="flex flex-col items-center mb-8">
-            <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-              {/* CAMBIO: Se usa ShieldCheck aquí también */}
-              <ShieldCheck className="text-slate-900" size={24} />
+      {/* Ajuste de Max-Height para que no se salga de la pantalla en celulares */}
+      <DialogContent className="rounded-[2rem] w-[95%] max-w-95 border-none p-0 bg-white shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
+        
+        <div className="overflow-y-auto p-6 md:p-8 custom-scrollbar">
+          {/* Banner de éxito */}
+          {isVerified && type === 'login' && (
+            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+              <CheckCircle2 className="text-emerald-500 shrink-0" size={18} />
+              <p className="text-emerald-700 text-[11px] font-medium leading-tight">
+                ¡Email verificado! Ya puedes ingresar.
+              </p>
             </div>
-            <DialogTitle className="text-center font-black uppercase text-[11px] tracking-[0.25em] text-slate-400">
-              {type === 'login' ? 'Acceso Seguro' : 'Crear Perfil Personal'}
-            </DialogTitle>
-          </DialogHeader>
+          )}
 
-          <div className="space-y-5">
-            {type === 'register' && (
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase ml-3 text-slate-400 tracking-wider">Nombre Completo</label>
-                <Input 
-                  name="name" 
-                  placeholder="Ej. Juan Pérez" 
-                  className="rounded-2xl bg-slate-50 border-none h-13 px-5 focus-visible:ring-1 focus-visible:ring-slate-200" 
-                  required 
-                />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <DialogHeader className="flex flex-col items-center mb-2">
+              <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center mb-3 shadow-lg rotate-3">
+                <ShieldCheck className="text-white" size={24} />
               </div>
-            )}
-            
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase ml-3 text-slate-400 tracking-wider">Email</label>
-              <Input 
-                name="email" 
-                type="email" 
-                placeholder="tu@email.com" 
-                className="rounded-2xl bg-slate-50 border-none h-13 px-5 focus-visible:ring-1 focus-visible:ring-slate-200" 
-                required 
-              />
+              <DialogTitle className="text-center">
+                <span className="block font-black uppercase text-[9px] tracking-[0.2em] text-slate-400 mb-1">
+                  Gestión Vida
+                </span>
+                <span className="text-lg font-bold text-slate-900">
+                  {type === 'login' ? 'Bienvenido' : 'Nueva Cuenta'}
+                </span>
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-3">
+              <Button 
+                type="button" 
+                onClick={handleGoogleAuth} 
+                variant="outline" 
+                className="w-full h-11 rounded-xl border-slate-100 font-bold gap-3 active:scale-95 transition-all text-xs"
+              >
+                <FcGoogle size={18} /> 
+                <span>Google</span>
+              </Button>
+
+              <div className="relative py-1 flex items-center">
+                <div className="grow border-t border-slate-100"></div>
+                <span className="shrink mx-3 text-[8px] font-bold text-slate-300 uppercase tracking-widest">o con email</span>
+                <div className="grow border-t border-slate-100"></div>
+              </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase ml-3 text-slate-400 tracking-wider">Contraseña</label>
-              <Input 
-                name="password" 
-                type="password" 
-                placeholder="••••••••" 
-                className="rounded-2xl bg-slate-50 border-none h-13 px-5 focus-visible:ring-1 focus-visible:ring-slate-200" 
-                required 
-              />
-            </div>
-
-            <Button 
-              type="submit" 
-              disabled={loading} 
-              className="w-full h-14 rounded-2xl bg-slate-900 font-bold text-white mt-4 shadow-lg shadow-slate-200 hover:bg-black transition-all"
-            >
-              {loading ? (
-                <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                type === 'login' ? "Iniciar Sesión" : "Crear mi Cuenta"
+              {type === 'register' && (
+                <AuthInput field="name" label="Nombre" placeholder="Tu nombre" error={errors.name} />
               )}
-            </Button>
-            
-            <p className="text-[10px] text-center text-slate-400 font-medium px-4">
-              Tus datos están protegidos con cifrado de grado militar.
-            </p>
-          </div>
-        </form>
+              
+              <AuthInput 
+                field="email" 
+                label="Email" 
+                placeholder="correo@gmail.com" 
+                type="email" 
+                error={errors.email} 
+              />
+              
+              <AuthInput field="password" label="Contraseña" placeholder="••••••••" type="password" error={errors.password} />
+
+              {type === 'register' && (
+                <AuthInput field="confirmPassword" label="Confirmar" placeholder="Repite la clave" type="password" error={errors.confirmPassword} />
+              )}
+            </div>
+
+            <div className="pt-2">
+              <Button 
+                type="submit" 
+                disabled={loading} 
+                className="w-full h-13 rounded-xl bg-slate-900 font-bold text-white shadow-md active:scale-95 transition-all"
+              >
+                {loading ? (
+                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  type === 'login' ? 'Acceder ahora' : 'Crear Cuenta'
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function AuthInput({ field, label, placeholder, type = "text", error }: any) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPasswordField = type === "password";
+
+  return (
+    <div className="space-y-1">
+      <label className="text-[9px] font-bold uppercase text-slate-400 ml-1 tracking-tight">
+        {label}
+      </label>
+      <div className="relative">
+        <Input 
+          name={field} 
+          type={isPasswordField && showPassword ? "text" : type}
+          placeholder={placeholder} 
+          className={cn(
+            "rounded-xl bg-slate-50 border-none h-11 px-4 text-sm transition-all focus-visible:ring-2 focus-visible:ring-slate-900/10", 
+            error && "ring-1 ring-rose-500 bg-rose-50/50 text-rose-900"
+          )} 
+        />
+        {isPasswordField && (
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 p-1"
+          >
+            {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
+        )}
+      </div>
+      {error && <p className="text-[9px] text-rose-500 ml-1 font-medium italic">{error}</p>}
+    </div>
   );
 }

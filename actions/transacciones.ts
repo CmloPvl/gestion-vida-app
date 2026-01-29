@@ -3,32 +3,40 @@
 import db from "@/prisma/client" 
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
+import { transaccionSchema } from "@/lib/schemas/transaccion"
 
-/**
- * 1. GUARDAR: Crea un movimiento en la DB
- */
-export async function crearTransaccion(data: {
-  nombre: string;
-  monto: number;
-  tipo: string;      
-  categoria: string; 
-  metodo: string;
-  fecha: Date;
-}) {
+export async function crearTransaccion(rawData: any) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "No autorizado" };
 
-    if (!data.nombre || data.monto <= 0 || !data.categoria) {
-      return { success: false, error: "Datos incompletos o monto inválido." };
+    // ASEGURAMOS QUE NADA LLEGUE COMO UNDEFINED ANTES DE PASAR POR ZOD
+    const dataToValidate = {
+      nombre: rawData.nombre || "Sin descripción",
+      monto: Number(rawData.monto),
+      tipo: rawData.tipo, // INGRESO o GASTO
+      clasificacion: rawData.clasificacion,
+      metodo: rawData.metodo || "EFECTIVO", // <--- Si falta, le ponemos EFECTIVO
+      fecha: rawData.fecha ? new Date(rawData.fecha) : new Date(),
+    };
+
+    const validacion = transaccionSchema.safeParse(dataToValidate);
+
+    if (!validacion.success) {
+      // Si falla, imprimimos en consola para que tú veas qué campo falta
+      console.error("❌ ZOD ERROR:", validacion.error.format());
+      const errorMsg = validacion.error.issues[0]?.message || "Datos inválidos";
+      return { success: false, error: errorMsg };
     }
+
+    const data = validacion.data;
 
     await db.transaccion.create({
       data: {
         nombre: data.nombre, 
         monto: data.monto,
         tipo: data.tipo,           
-        clasificacion: data.categoria, 
+        clasificacion: data.clasificacion, 
         metodo: data.metodo,       
         fecha: data.fecha,   
         userId: session.user.id,
@@ -41,13 +49,14 @@ export async function crearTransaccion(data: {
     return { success: true };
   } catch (error) {
     console.error("❌ ERROR AL GUARDAR:", error);
-    return { success: false, error: "Error interno de base de datos." };
+    return { success: false, error: "Error de servidor al guardar la transacción." };
   }
 }
 
 /**
- * 2. LEER: Trae los movimientos del día seleccionado
+ * EL RESTO DE TUS FUNCIONES (LEER, RESUMEN, ELIMINAR) ESTÁN PERFECTAS
  */
+
 export async function obtenerTransaccionesPorFecha(fechaBase: Date) {
   try {
     const session = await auth();
@@ -55,7 +64,6 @@ export async function obtenerTransaccionesPorFecha(fechaBase: Date) {
 
     const inicioDia = new Date(fechaBase);
     inicioDia.setHours(0, 0, 0, 0);
-    
     const finDia = new Date(fechaBase);
     finDia.setHours(23, 59, 59, 999);
 
@@ -72,9 +80,6 @@ export async function obtenerTransaccionesPorFecha(fechaBase: Date) {
   }
 }
 
-/**
- * 3. RESUMEN: Totales mensuales para el BalanceCard
- */
 export async function obtenerResumenMes() {
   try {
     const session = await auth();
@@ -104,9 +109,6 @@ export async function obtenerResumenMes() {
   }
 }
 
-/**
- * 4. ELIMINAR: Borra una transacción específica
- */
 export async function eliminarTransaccion(id: string) {
   try {
     const session = await auth();
@@ -115,7 +117,7 @@ export async function eliminarTransaccion(id: string) {
     await db.transaccion.delete({
       where: { 
         id: id,
-        userId: session.user.id
+        userId: session.user.id 
       }
     });
 
@@ -124,6 +126,6 @@ export async function eliminarTransaccion(id: string) {
     return { success: true };
   } catch (error) {
     console.error("❌ ERROR AL ELIMINAR:", error);
-    return { success: false, error: "No se pudo eliminar." };
+    return { success: false, error: "No se pudo eliminar la transacción." };
   }
 }

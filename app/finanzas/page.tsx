@@ -14,16 +14,17 @@ import { toast } from "sonner"
 
 export default function FinanzasPage() {
   const router = useRouter()
+  // 1. Extraemos 'eliminar' del hook
   const { 
     fechaSeleccionada, 
     setFechaSeleccionada, 
     movimientos, 
     resumen, 
     loading, 
-    refetch 
+    refetch,
+    eliminar // <-- Agregado
   } = useFinanzas();
 
-  // Función de refresco manual con feedback visual
   const handleRefresh = async () => {
     try {
       await refetch();
@@ -37,7 +38,6 @@ export default function FinanzasPage() {
     <main className="min-h-screen bg-[#F8F9FB] pb-36">
       <div className="max-w-md mx-auto p-5 space-y-6">
         
-        {/* Barra Superior de Navegación */}
         <nav className="flex items-center justify-between pt-2">
           <Button 
             variant="ghost" 
@@ -60,7 +60,6 @@ export default function FinanzasPage() {
           </Button>
         </nav>
 
-        {/* Header con Indicador de Estado */}
         <header className="space-y-1">
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">
             Gestión de Flujo
@@ -76,7 +75,6 @@ export default function FinanzasPage() {
           </div>
         </header>
 
-        {/* Contenido Principal con Animación */}
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-700">
           
           {loading && movimientos.length === 0 ? (
@@ -103,22 +101,22 @@ export default function FinanzasPage() {
                   </span>
                 </div>
                 
+                {/* 2. CAMBIO CLAVE: onMutation -> onEliminar={eliminar} */}
                 <ListaMovimientos 
                   movimientos={movimientos} 
                   fecha={fechaSeleccionada}
-                  onMutation={refetch}
+                  onEliminar={eliminar} 
                 />
               </section>
             </>
           )}
         </div>
 
-        {/* Acciones UI - El Botón Flotante */}
         <BotonFlotanteAcciones 
           fechaSeleccionada={fechaSeleccionada}
           onSuccess={() => {
             refetch();
-            toast.success("Operación registrada con éxito");
+            toast.success("Operación registrada");
           }}
         />
       </div>

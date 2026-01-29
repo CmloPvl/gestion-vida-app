@@ -5,114 +5,106 @@ import { BottomNav } from "./bottom-nav";
 import { 
   ArrowRight, 
   Wallet, 
-  Plus, 
   Sparkles, 
-  Layout, 
-  TrendingUp 
+  TrendingUp,
+  Target, // Icono para Estratégico
+  ChevronRight
 } from "lucide-react";
 import Link from "next/link";
 
 export default function DashboardClient({ session, resumenInicial }: any) {
-  const firstName = session.user?.name?.split(' ')[0];
-  
-  // Cálculo rápido para mostrar en el card
+  const firstName = session.user?.name?.split(' ')[0] || "Usuario";
   const balance = (resumenInicial?.ingresos || 0) - (resumenInicial?.gastos || 0);
 
   return (
     <div className="min-h-screen bg-white flex flex-col pb-32 text-slate-900 font-sans selection:bg-slate-100">
       
-      {/* HEADER: Refinado y fijo para Mobile */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md px-6 pt-10 pb-4 flex items-center justify-between">
+      {/* HEADER: Identidad Gestión Vida */}
+      <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md px-6 pt-12 pb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg shadow-slate-200 rotate-3">
-            <span className="text-white font-black text-[10px]">GV</span>
+          <div className="w-10 h-10 bg-slate-900 rounded-2xl flex items-center justify-center shadow-xl shadow-slate-200 -rotate-6 transition-transform hover:rotate-0">
+            <span className="text-white font-black text-xs tracking-tighter">GV</span>
           </div>
-          <h1 className="text-[11px] font-black tracking-[0.2em] uppercase text-slate-400">Personal OS</h1>
+          <div>
+            <h1 className="text-[10px] font-black tracking-[0.3em] uppercase text-slate-400 leading-none mb-1">Sistema Operativo</h1>
+            <p className="text-sm font-bold text-slate-900">Gestión Vida</p>
+          </div>
         </div>
         <UserMenu session={session} />
       </header>
 
       <main className="flex-1 px-6 space-y-10 max-w-md mx-auto w-full">
         
-        {/* SECCIÓN BIENVENIDA */}
-        <section className="pt-6">
+        {/* BIENVENIDA DINÁMICA */}
+        <section className="pt-4">
           <h2 className="text-4xl font-light tracking-tight text-slate-900 leading-tight">
-            Hola, <br />
-            <span className="font-black italic underline decoration-slate-100 underline-offset-4">{firstName}</span>.
+            Diseña tu <br />
+            <span className="font-black italic underline decoration-slate-200 underline-offset-8">libertad</span>, {firstName}.
           </h2>
         </section>
 
-        {/* MÓDULO PRINCIPAL: FINANZAS */}
-        <section className="space-y-4">
+        {/* CENTRO DE CONTROL: FINANZAS & ESTRATÉGICO */}
+        <section className="space-y-6">
           <div className="flex items-center justify-between px-1">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Módulo Activo</h3>
-            <div className="flex items-center gap-1.5">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="text-[10px] font-bold text-slate-500 uppercase">Live</span>
-            </div>
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Panel de Control</h3>
+            <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded-full uppercase">Sincronizado</span>
           </div>
-          
-          <Link href="/finanzas" className="group block no-underline">
-            <div className="relative overflow-hidden bg-slate-900 rounded-[2.5rem] p-8 transition-all duration-500 hover:shadow-2xl hover:shadow-slate-200 active:scale-[0.97]">
-              <div className="flex justify-between items-start mb-12">
-                <div className="w-14 h-14 bg-white/10 backdrop-blur-lg rounded-2xl flex items-center justify-center border border-white/10">
-                  <Wallet className="h-7 w-7 text-white" />
-                </div>
-                <div className="text-right text-white/60">
-                  <p className="text-[10px] font-black uppercase tracking-widest mb-1">Balance Mes</p>
-                  <p className="text-xl font-mono font-bold text-white">
-                    ${balance.toLocaleString('es-CL')}
-                  </p>
-                </div>
+
+          {/* CARD PRINCIPAL UNIFICADA */}
+          <div className="relative overflow-hidden bg-slate-900 rounded-[2.8rem] p-8 shadow-2xl shadow-slate-300">
+            <div className="flex justify-between items-start mb-10">
+              <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
+                <Wallet className="h-6 w-6 text-white" />
               </div>
-              
-              <div className="relative z-10">
-                <h4 className="text-2xl font-bold tracking-tighter text-white mb-1">Gestión Financiera</h4>
-                <div className="flex items-center gap-2 text-white/50 text-sm font-medium">
-                  <p>Presupuesto y Gastos</p>
-                  <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform duration-300" />
-                </div>
+              <div className="text-right">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Balance Disponible</p>
+                <p className="text-2xl font-mono font-bold text-white">
+                  ${balance.toLocaleString('es-CL')}
+                </p>
               </div>
-              
-              {/* Decoración abstracta de fondo */}
-              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-colors" />
             </div>
-          </Link>
+
+            <div className="space-y-3">
+              {/* Opción 1: Finanzas */}
+              <Link href="/finanzas" className="flex items-center justify-between bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-2xl transition-all group">
+                <div className="flex items-center gap-3">
+                  <TrendingUp size={18} className="text-emerald-400" />
+                  <span className="text-white font-semibold">Flujo de Caja</span>
+                </div>
+                <ArrowRight size={16} className="text-white/30 group-hover:translate-x-1 transition-transform" />
+              </Link>
+
+              {/* Opción 2: Estratégico */}
+              <Link href="/finanzas/estrategico" className="flex items-center justify-between bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-2xl transition-all group">
+                <div className="flex items-center gap-3">
+                  <Target size={18} className="text-blue-400" />
+                  <span className="text-white font-semibold">Plan Estratégico</span>
+                </div>
+                <ArrowRight size={16} className="text-white/30 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+            
+            {/* Decoración de fondo */}
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-blue-500/10 rounded-full blur-[80px]" />
+          </div>
         </section>
 
-        {/* PRÓXIMAMENTE: DISEÑO MÁS COMPACTO */}
+        {/* SECCIÓN PRÓXIMAMENTE (MODULAR) */}
         <section className="space-y-4">
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">En Desarrollo</h3>
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Próximos Módulos</h3>
           
-          <div className="space-y-3">
-            {/* Local Uruguay 660 */}
-            <div className="flex items-center justify-between p-5 rounded-[1.8rem] bg-slate-50 border border-slate-100 group">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center border border-slate-100 text-slate-300">
-                  <Sparkles size={20} />
-                </div>
-                <div>
-                  <h5 className="text-sm font-bold text-slate-400">Uruguay 660</h5>
-                  <p className="text-[10px] text-slate-400 font-medium">Inventario & Negocio</p>
-                </div>
-              </div>
-              <span className="text-[9px] font-bold py-1 px-2 rounded-lg bg-slate-200 text-slate-500 uppercase tracking-tighter">Próximamente</span>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-5 rounded-[2rem] bg-slate-50 border border-slate-100 opacity-50">
+               <div className="w-10 h-10 rounded-xl bg-white mb-3 flex items-center justify-center border border-slate-100">
+                  <Sparkles size={18} className="text-slate-400" />
+               </div>
+               <p className="text-xs font-bold text-slate-500">Salud</p>
             </div>
-
-            {/* Salud */}
-            <div className="flex items-center justify-between p-5 rounded-[1.8rem] bg-slate-50 border border-slate-100 opacity-60">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center border border-slate-100 text-slate-300">
-                  <TrendingUp size={20} />
-                </div>
-                <div>
-                  <h5 className="text-sm font-bold text-slate-400">Salud & Rutina</h5>
-                  <p className="text-[10px] text-slate-400 font-medium">Métricas personales</p>
-                </div>
-              </div>
+            <div className="p-5 rounded-[2rem] bg-slate-50 border border-slate-100 opacity-50">
+               <div className="w-10 h-10 rounded-xl bg-white mb-3 flex items-center justify-center border border-slate-100">
+                  <Target size={18} className="text-slate-400" />
+               </div>
+               <p className="text-xs font-bold text-slate-500">Hábitos</p>
             </div>
           </div>
         </section>

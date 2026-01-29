@@ -1,27 +1,28 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
+import Google from "next-auth/providers/google" // Agregamos Google por si decides activarlo
 import db from "./prisma/client"
 import bcrypt from "bcryptjs"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
     Credentials({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
-        // Buscamos al usuario en tu tabla de Supabase
+        const email = (credentials.email as string).toLowerCase();
+
         const user = await db.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email },
         })
 
+        // Si no existe o no tiene clave (entró por Google)
         if (!user || !user.password) return null
 
-        // Comparamos la clave que puso el usuario con la encriptada en la base de datos
         const isValid = await bcrypt.compare(
           credentials.password as string,
           user.password
@@ -29,8 +30,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!isValid) return null
 
+        // --- EL CANDADO ---
+        // Bloqueamos aquí para que el error sea capturable por el hook
+        if (!user.emailVerified) {
+          throw new Error("EmailNotVerified") 
+        }
+
         return {
-          id: user.id.toString(),
+          id: user.id,
           name: user.name,
           email: user.email,
         }
@@ -44,9 +51,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return session
     },
+    async jwt({ token }) {
+      // Podemos agregar datos extra al token aquí si fuera necesario
+      return token
+    },
   },
   pages: {
-    signIn: "/", // Si algo falla, vuelve aquí
+    signIn: "/",
+    error: "/", 
   },
   session: { strategy: "jwt" },
 })

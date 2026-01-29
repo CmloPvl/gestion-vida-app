@@ -1,38 +1,33 @@
 "use client"
 
 import React from "react"
-import { TrendingUp, Wallet, CalendarDays, Trash2, CreditCard, Banknote } from "lucide-react"
+import { TrendingUp, Wallet, CalendarDays, Trash2, CreditCard, Banknote, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { eliminarTransaccion } from "@/actions/transacciones"
 
-// 1. Sincronizamos la interfaz con Prisma y el Page
+// 1. Quitamos la importación directa de la action y usamos el Hook
 export interface Movimiento {
   id: string;
   nombre: string;
   monto: number;
-  clasificacion: string; // Cambiado de 'categoria' a 'clasificacion'
-  tipo: string;          // Cambiado a string para mayor flexibilidad con Prisma
-  metodo: string;        // Agregado para que la interfaz esté completa
+  clasificacion: string;
+  tipo: string;
+  metodo: string;
   completado: boolean;
 }
 
 interface ListaProps {
   movimientos: Movimiento[];
   fecha: Date;
-  onMutation: () => void;
+  // Agregamos estas props para conectar con useFinanzas
+  onEliminar: (id: string) => void;
+  isDeleting?: boolean;
 }
 
-export function ListaMovimientos({ movimientos, fecha, onMutation }: ListaProps) {
+export function ListaMovimientos({ movimientos, fecha, onEliminar }: ListaProps) {
   
-  const handleEliminar = async (id: string) => {
-    if (confirm("¿Deseas eliminar este registro permanentemente?")) {
-      try {
-        await eliminarTransaccion(id);
-        onMutation(); 
-      } catch (error) {
-        console.error("Error al eliminar:", error);
-      }
-    }
+  // Ahora handleEliminar ya no dispara el alert de 'confirm'
+  const handleEliminar = (id: string) => {
+    onEliminar(id); 
   };
 
   return (
@@ -55,7 +50,6 @@ export function ListaMovimientos({ movimientos, fecha, onMutation }: ListaProps)
                 className="flex items-center justify-between p-4 bg-[#FBFBFC] hover:bg-white hover:shadow-md hover:scale-[1.01] transition-all duration-200 rounded-[1.8rem] group"
               >
                 <div className="flex items-center gap-4">
-                  {/* Iconografía basada en CLASIFICACION */}
                   <div className={cn(
                     "p-3 rounded-2xl shadow-sm transition-colors",
                     item.clasificacion === "ACTIVO" ? "bg-emerald-50 text-emerald-600" : 
@@ -70,7 +64,6 @@ export function ListaMovimientos({ movimientos, fecha, onMutation }: ListaProps)
                   <div>
                     <div className="flex items-center gap-2">
                         <p className="font-bold text-slate-900 text-sm leading-tight">{item.nombre}</p>
-                        {/* Pequeño icono del método de pago */}
                         {item.metodo === "TARJETA" ? 
                             <CreditCard size={10} className="text-slate-400" /> : 
                             <Banknote size={10} className="text-slate-400" />

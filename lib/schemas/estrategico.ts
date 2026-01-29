@@ -11,4 +11,6 @@ export const estrategicoSchema = z.object({
   subMonto: z.coerce.number()
     .min(0, "No puede ser un valor negativo")
     .optional(),
+
+  seccion: z.enum(["ingresos", "gastos", "activos", "pasivos"])
 });

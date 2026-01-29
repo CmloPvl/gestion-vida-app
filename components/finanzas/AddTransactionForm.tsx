@@ -7,25 +7,54 @@ import { Input } from "@/components/ui/input"
 import { DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { ArrowUpCircle, ArrowDownCircle } from "lucide-react"
 import { toast } from "sonner"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 export function AddTransactionForm({ onSuccess, fechaPreseleccionada }: { onSuccess?: () => void, fechaPreseleccionada: Date }) {
-  const [loading, setLoading] = useState(false)
   const [tipo, setTipo] = useState("GASTO")
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation({
+    mutationFn: crearTransaccion,
+    onMutate: async (nuevaTransaccion) => {
+      await queryClient.cancelQueries({ queryKey: ["transacciones"] })
+      const transaccionesPrevias = queryClient.getQueryData(["transacciones"])
+      queryClient.setQueryData(["transacciones"], (old: any) => {
+        const itemOptimista = {
+          ...nuevaTransaccion,
+          id: `temp-${Date.now()}`,
+          fecha: nuevaTransaccion.fecha.toISOString(),
+        }
+        return [itemOptimista, ...(old || [])]
+      })
+      return { transaccionesPrevias }
+    },
+    onError: (err, nuevaTransaccion, context) => {
+      queryClient.setQueryData(["transacciones"], context?.transaccionesPrevias)
+      toast.error("Error al guardar, intenta de nuevo")
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["transacciones"] })
+      queryClient.invalidateQueries({ queryKey: ["resumen-mes"] })
+    },
+    onSuccess: (result) => {
+      if (result.success) {
+        toast.success("¡Registro guardado!")
+        if (onSuccess) onSuccess()
+      } else {
+        toast.error(result.error)
+      }
+    }
+  })
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setLoading(true)
 
     const formData = new FormData(e.currentTarget)
     const montoRaw = formData.get("monto")
     const montoNumerico = Number(montoRaw)
 
-    // VALIDACIÓN DE SEGURIDAD: Evita que se guarden datos mal (negativos o cero)
     if (montoNumerico <= 0) {
-      toast.error("Monto inválido", { 
-        description: "Ingresa un número mayor a 0. El tipo (Ingreso/Gasto) se define arriba." 
-      })
-      setLoading(false)
+      toast.error("Monto inválido", { description: "Ingresa un número mayor a 0." })
       return
     }
 
@@ -33,32 +62,22 @@ export function AddTransactionForm({ onSuccess, fechaPreseleccionada }: { onSucc
     const ahora = new Date()
     fechaFinal.setHours(ahora.getHours(), ahora.getMinutes(), ahora.getSeconds())
 
+    // --- EL ARREGLO ESTÁ AQUÍ ---
     const payload = {
-      nombre: formData.get("nombre") as string,
+      nombre: (formData.get("nombre") as string) || "Sin descripción",
       monto: montoNumerico,
-      tipo: tipo,
-      categoria: formData.get("clasificacion") as string,
-      metodo: formData.get("metodo") as string,
+      tipo: tipo, // "INGRESO" o "GASTO"
+      // CAMBIAMOS 'categoria' por 'clasificacion' para que Zod lo reconozca
+      clasificacion: formData.get("clasificacion") as string, 
+      metodo: (formData.get("metodo") as string) || "EFECTIVO",
       fecha: fechaFinal,
     }
 
-    try {
-      const result = await crearTransaccion(payload)
-      if (result.success) {
-        toast.success("¡Registro guardado!")
-        if (onSuccess) onSuccess()
-      } else {
-        toast.error(result.error)
-      }
-    } catch (error) {
-      toast.error("Error de conexión")
-    } finally {
-      setLoading(false)
-    }
+    mutation.mutate(payload)
   }
 
   return (
-    <DrawerContent className="px-6 pb-10 max-w-md mx-auto rounded-t-[2.5rem] bg-white">
+    <DrawerContent className="px-6 pb-10 max-w-md mx-auto rounded-t-[2.5rem] bg-white border-none shadow-2xl">
       <DrawerHeader className="pt-6">
         <DrawerTitle className="text-xl font-black text-center text-slate-800">Nuevo Movimiento</DrawerTitle>
       </DrawerHeader>
@@ -76,19 +95,12 @@ export function AddTransactionForm({ onSuccess, fechaPreseleccionada }: { onSucc
         </div>
 
         <div className="space-y-4">
-          <Input name="nombre" placeholder="¿En qué?" className="h-12 border-none bg-slate-50 rounded-xl px-4" required />
+          <Input name="nombre" placeholder="¿En qué? (ej: Venta local)" className="h-12 border-none bg-slate-50 rounded-xl px-4 font-bold" required />
           
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">$</span>
-            <Input 
-              name="monto" 
-              type="number" 
-              inputMode="decimal" // Teclado numérico en móvil
-              min="0.01" 
-              step="any"
-              placeholder="0" 
-              className="h-16 text-3xl font-black border-none bg-slate-50 rounded-2xl pl-8" 
-              required 
+            <Input name="monto" type="number" inputMode="decimal" min="0.01" step="any" placeholder="0" 
+              className="h-16 text-3xl font-black border-none bg-slate-50 rounded-2xl pl-8" required 
             />
           </div>
 
@@ -97,7 +109,8 @@ export function AddTransactionForm({ onSuccess, fechaPreseleccionada }: { onSucc
               <option value="EFECTIVO">💵 Efectivo</option>
               <option value="TARJETA">💳 Tarjeta</option>
             </select>
-            <select name="clasificacion" className="h-12 rounded-xl bg-slate-50 border-none px-3 font-bold text-slate-600 outline-none">
+            {/* El name debe ser 'clasificacion' para coincidir con el payload */}
+            <select name="clasificacion" className="h-12 rounded-xl bg-slate-50 border-none px-3 font-bold text-slate-600 outline-none" required>
               <option value="VIDA">Vida</option>
               <option value="ACTIVO">Inversión</option>
               <option value="PASIVO">Deuda</option>
@@ -105,8 +118,10 @@ export function AddTransactionForm({ onSuccess, fechaPreseleccionada }: { onSucc
           </div>
         </div>
 
-        <Button type="submit" disabled={loading} className={`w-full h-14 rounded-2xl font-bold text-white transition-transform active:scale-95 ${tipo === 'INGRESO' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-900 hover:bg-black'}`}>
-          {loading ? "Cargando..." : "Confirmar Movimiento"}
+        <Button type="submit" disabled={mutation.isPending}
+          className={`w-full h-14 rounded-2xl font-bold text-white transition-transform active:scale-95 ${tipo === 'INGRESO' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-900 hover:bg-black'}`}
+        >
+          {mutation.isPending ? "Cargando..." : "Confirmar Movimiento"}
         </Button>
       </form>
     </DrawerContent>

@@ -12,17 +12,33 @@ datasource db {
 
 // --- MODELO DE USUARIO ---
 model User {
-  id                String            @id @default(uuid())
-  name              String?
-  email             String            @unique
-  password          String            
-  image             String?
+  id            String    @id @default(uuid())
+  name          String?
+  email         String    @unique
+  password      String
+  image         String?
   
+  // --- CAMPOS PARA SaaS PROFESIONAL ---
+  // Si es null, el usuario no ha verificado su cuenta.
+  emailVerified DateTime? 
+  
+  // Relaciones existentes
   transacciones      Transaccion[]
-  itemsEstrategicos EstrategicoItem[]
+  itemsEstrategicos  EstrategicoItem[]
 
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// --- MODELO PARA TOKENS DE VERIFICACIÓN ---
+// Esencial para validar que el correo realmente existe antes de dar acceso.
+model VerificationToken {
+  id      String   @id @default(uuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
 }
 
 // --- MODELO DE TRANSACCIONES ---
@@ -32,7 +48,7 @@ model Transaccion {
   monto         Float
   tipo          String   // "INGRESO" o "GASTO"
   clasificacion String   // "VIDA", "ACTIVO", "PASIVO"
-  metodo        String   @default("EFECTIVO") // <--- NUEVO CAMPO AGREGADO
+  metodo        String   @default("EFECTIVO")
   fecha         DateTime @default(now())
   completado    Boolean  @default(true)
   notas         String?
