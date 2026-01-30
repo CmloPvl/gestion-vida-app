@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { FormularioEstrategico } from "./FormularioEstrategico"
 import { deleteEstrategicoItem } from "@/actions/estrategico"
 import { toast } from "sonner"
-import { useRouter } from "next/navigation" // Importamos router
+import { useRouter } from "next/navigation"
 
 function BotonAyuda({ titulo, explicacion }: { titulo: string, explicacion: string }) {
   return (
@@ -35,9 +35,9 @@ function BotonAyuda({ titulo, explicacion }: { titulo: string, explicacion: stri
   )
 }
 
-export function SectionContainer({ title, detail, icon, color, items, isAsset, isLiability, ayuda }: any) {
+export function SectionContainer({ title, detail, icon, color, items, isAsset, isLiability, ayuda, seccion }: any) {
   const [isPending, startTransition] = useTransition();
-  const router = useRouter(); // Inicializamos router
+  const router = useRouter();
 
   const colorMap: any = { 
     emerald: "text-emerald-600 bg-emerald-50", 
@@ -53,7 +53,7 @@ export function SectionContainer({ title, detail, icon, color, items, isAsset, i
       const result = await deleteEstrategicoItem(id);
       if (result.success) {
         toast.success("Eliminado correctamente");
-        router.refresh(); // Esto borra el item de la vista sin F5
+        router.refresh();
       } else {
         toast.error("Error al eliminar");
       }
@@ -73,18 +73,25 @@ export function SectionContainer({ title, detail, icon, color, items, isAsset, i
             <p className="text-[10px] text-slate-400 font-bold mt-1.5 uppercase tracking-tighter">{detail}</p>
           </div>
         </div>
-        <FormularioEstrategico title={title} needsSubMonto={isAsset || isLiability} />
+        {/* AQUÍ ESTABA EL ERROR: Faltaba pasar 'seccion' */}
+        <FormularioEstrategico 
+          title={title} 
+          seccion={seccion} 
+          needsSubMonto={isAsset || isLiability} 
+        />
       </header>
 
       <div className="space-y-3">
         {(!items || items.length === 0) && (
-          <p className="text-[10px] text-slate-300 italic text-center py-2">No hay registros aún</p>
+          <div className="bg-white/40 border-2 border-dashed border-slate-100 rounded-[1.8rem] py-8 flex flex-col items-center">
+            <p className="text-[10px] text-slate-300 font-black uppercase tracking-widest">Sin registros aún</p>
+          </div>
         )}
         {items?.map((item: any) => (
-          <Card key={item.id} className="border-none shadow-sm rounded-[1.8rem] bg-white overflow-hidden">
+          <Card key={item.id} className="border-none shadow-sm rounded-[1.8rem] bg-white overflow-hidden group hover:shadow-md transition-all">
             <CardContent className="p-5 flex justify-between items-center">
               <div className="flex items-center gap-4">
-                <div className={cn("w-1 h-10 rounded-full", textColor)} />
+                <div className={cn("w-1 h-10 rounded-full", color === "blue" ? "bg-indigo-500" : `bg-${color}-500`)} />
                 <div>
                   <p className="font-bold text-slate-800 text-sm">{item.nombre}</p>
                   {(isAsset || isLiability) && (
@@ -103,7 +110,7 @@ export function SectionContainer({ title, detail, icon, color, items, isAsset, i
                 <button 
                   onClick={() => handleDelete(item.id)} 
                   disabled={isPending}
-                  className="p-2 text-slate-200 hover:text-rose-500 transition-colors"
+                  className="p-2 text-slate-100 group-hover:text-rose-400 transition-colors"
                 >
                   {isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                 </button>

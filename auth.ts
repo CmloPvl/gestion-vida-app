@@ -1,6 +1,6 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import Google from "next-auth/providers/google" // Agregamos Google por si decides activarlo
+import Google from "next-auth/providers/google"
 import db from "./prisma/client"
 import bcrypt from "bcryptjs"
 
@@ -20,7 +20,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           where: { email },
         })
 
-        // Si no existe o no tiene clave (entró por Google)
         if (!user || !user.password) return null
 
         const isValid = await bcrypt.compare(
@@ -30,12 +29,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!isValid) return null
 
-        // --- EL CANDADO ---
-        // Bloqueamos aquí para que el error sea capturable por el hook
+        // --- EL CANDADO DE VERIFICACIÓN ---
         if (!user.emailVerified) {
           throw new Error("EmailNotVerified") 
         }
 
+        // Retornamos el objeto que se guardará en el JWT inicial
         return {
           id: user.id,
           name: user.name,
@@ -45,20 +44,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
+    async jwt({ token, user }) {
+      // Si el usuario acaba de iniciar sesión, pasamos el ID al token
+      if (user) {
+        token.sub = user.id
+      }
+      return token
+    },
     async session({ session, token }) {
+      // Inyectamos el ID del token directamente en la sesión
       if (token.sub && session.user) {
         session.user.id = token.sub
       }
       return session
-    },
-    async jwt({ token }) {
-      // Podemos agregar datos extra al token aquí si fuera necesario
-      return token
     },
   },
   pages: {
     signIn: "/",
     error: "/", 
   },
-  session: { strategy: "jwt" },
+  session: { 
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 días de sesión para no tener que loguearte a cada rato en el local
+  },
+  secret: process.env.NEXTAUTH_SECRET,
 })

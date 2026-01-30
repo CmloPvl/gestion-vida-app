@@ -22,13 +22,15 @@
       "@/*": ["./*"]
     }
   },
-  "include": [
+"include": [
     "next-env.d.ts",
+    "next-auth.d.ts", // Si lo creaste en la raíz
+    "types/next-auth.d.ts", // Si lo creaste en /types
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+, "components/layout"  ],
   "exclude": ["node_modules"]
 }

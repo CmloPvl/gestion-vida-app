@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { ArrowUpCircle, ArrowDownCircle, PlusCircle, PieChart } from "lucide-react";
 import { cn } from "@/lib/utils";
+// Asegúrate de que esta ruta sea la correcta en tu proyecto
 import { TransactionModal } from "@/components/transactions/transaction-modal";
 
 export function QuickActions() {
-  // Estado para saber qué modal abrir (Ingreso o Gasto)
+  // Estado para controlar qué modal está activo
   const [activeModal, setActiveModal] = useState<'INCOME' | 'EXPENSE' | null>(null);
 
   const actions = [
@@ -55,14 +56,16 @@ export function QuickActions() {
         ))}
       </section>
 
-      {/* Si activeModal no es null, mostramos el TransactionModal.
-          Usamos 'open' y 'setOpen' que son los nombres estándar.
+      {/* Si activeModal tiene un valor, renderizamos el TransactionModal.
+          La prop setOpen maneja el cierre: si val es false, reseteamos a null.
       */}
       {activeModal && (
         <TransactionModal 
           type={activeModal} 
           open={!!activeModal} 
-          setOpen={(val: boolean) => !val && setActiveModal(null)} 
+          setOpen={(val: boolean) => {
+            if (!val) setActiveModal(null);
+          }} 
         />
       )}
     </>

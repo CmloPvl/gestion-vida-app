@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 export function BottomNav() {
   const pathname = usePathname();
 
+  // Definimos las rutas. 
+  // 'Finanzas' es el Home ('/'). 'Salud' está deshabilitado como lo tenías.
   const navItems = [
     { label: 'Finanzas', icon: Wallet, href: '/', active: pathname === '/' },
     { label: 'Salud', icon: PieChart, href: '#', active: false, disabled: true },
@@ -21,6 +23,8 @@ export function BottomNav() {
           <Link 
             key={i} 
             href={item.href}
+            // Evitamos que el link funcione si está deshabilitado
+            onClick={(e) => item.disabled && e.preventDefault()}
             className={cn(
               "flex flex-col items-center gap-1 transition-all",
               item.active ? "text-emerald-600 scale-110" : "text-slate-300",

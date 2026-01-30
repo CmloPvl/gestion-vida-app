@@ -1,6 +1,6 @@
 "use server"
 
-import db from "@/prisma/client" 
+import prisma from "@/lib/prisma" // Corregido: Importamos desde nuestro singleton
 import bcrypt from "bcryptjs"
 import { authSchema } from "@/lib/validations/auth"
 import { v4 as uuidv4 } from "uuid"
@@ -16,11 +16,10 @@ export async function registrarUsuario(formData: FormData) {
     }
 
     const { email, password, name } = validation.data
-    
-    // Normalizar email a minúsculas para evitar duplicados por tipeo
     const normalizedEmail = email.toLowerCase();
 
-    const usuarioExistente = await db.user.findUnique({ 
+    // Verificamos si ya existe
+    const usuarioExistente = await prisma.user.findUnique({ 
       where: { email: normalizedEmail } 
     })
 
@@ -30,38 +29,35 @@ export async function registrarUsuario(formData: FormData) {
 
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // 1. Crear el usuario (se crea con emailVerified: null por defecto)
-    await db.user.create({
-      data: {
-        name: name || null,
-        email: normalizedEmail,
-        password: hashedPassword,
-      },
-    })
-
-    // 2. Generar Token de Verificación
+    // 1. Crear el usuario y el token en una transacción (Todo o nada)
     const token = uuidv4();
     const expires = new Date(new Date().getTime() + 3600 * 1000); // 1 hora
 
-    // Limpiar tokens antiguos del mismo email antes de crear uno nuevo
-    await db.verificationToken.deleteMany({
-      where: { email: normalizedEmail }
-    }).catch(() => {}); 
+    await prisma.$transaction(async (tx) => {
+      // Crear usuario
+      await tx.user.create({
+        data: {
+          name: name || null,
+          email: normalizedEmail,
+          password: hashedPassword,
+        },
+      })
 
-    await db.verificationToken.create({
-      data: { email: normalizedEmail, token, expires }
+      // Limpiar tokens viejos y crear el nuevo
+      await tx.verificationToken.deleteMany({ where: { email: normalizedEmail } })
+      await tx.verificationToken.create({
+        data: { email: normalizedEmail, token, expires }
+      })
     })
 
-    // 3. ENVIAR EMAIL REAL
+    // 2. Enviar email (fuera de la transacción para no bloquear la DB si el mail tarda)
     try {
       await sendVerificationEmail(normalizedEmail, token);
     } catch (error) {
       console.error("Error al enviar email:", error)
-      // Si falla el mail, borramos el token para que puedan reintentar o pedir otro
-      return { error: "Cuenta creada, pero hubo un problema al enviar el correo. Por favor, intenta solicitar un nuevo link de acceso." }
+      return { error: "Cuenta creada, pero hubo un problema al enviar el correo. Intenta solicitar un nuevo link de acceso." }
     }
 
-    // Retornamos éxito para que el Hook dispare el mensaje de Gmail y cierre el modal
     return { success: true }
 
   } catch (error: any) {

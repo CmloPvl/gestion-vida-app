@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, RefreshCw } from "lucide-react"
+import { ChevronLeft, RefreshCw, Zap } from "lucide-react"
 import { useFinanzas } from "@/hooks/use-finanzas"
 import { AuditoriaCalendario } from "@/components/finanzas/AuditoriaCalendario"
 import { BalanceCard } from "@/components/finanzas/BalanceCard"
@@ -60,20 +60,20 @@ export default function FinanzasPage() {
           </Button>
         </nav>
 
-        <header className="space-y-1">
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-            Gestión de Flujo
-          </h1>
-          <div className="flex items-center gap-2">
-            <div className="relative flex h-2 w-2">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${loading ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${loading ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
-            </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              {loading ? "Sincronizando..." : "Uruguay 660 • En línea"}
-            </p>
-          </div>
-        </header>
+<header className="space-y-1">
+  <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+    Flujo de Efectivo
+  </h1>
+  <div className="flex items-center gap-2">
+    <div className="relative flex h-2 w-2">
+      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${loading ? 'bg-amber-400' : 'bg-indigo-400'}`}></span>
+      <span className={`relative inline-flex rounded-full h-2 w-2 ${loading ? 'bg-amber-500' : 'bg-indigo-500'}`}></span>
+    </div>
+    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+      {loading ? "Sincronizando..." : "Ecosistema Financiero • Personal"}
+    </p>
+  </div>
+</header>
 
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-700">
           
@@ -136,3 +136,23 @@ function FinanzasSkeleton() {
     </div>
   );
 }
+
+{/* ... después del gráfico de libertad ... */}
+<section className="bg-indigo-50 rounded-[2.5rem] p-8 border border-indigo-100 mt-6">
+  <div className="flex items-center gap-3 mb-4">
+    <Zap className="text-indigo-600 h-5 w-5 fill-indigo-200" />
+    <h5 className="text-xs font-black uppercase text-indigo-900 tracking-wider">Plan de Acción</h5>
+  </div>
+  <ul className="space-y-3">
+    {[
+      { t: "Fase 1", d: "Cubre tu Costo de Vida con ingresos activos." },
+      { t: "Fase 2", d: "Convierte excedente en Patrimonio Productivo." },
+      { t: "Fase 3", d: "Libertad: Tus Activos pagan tu estilo de vida." }
+    ].map((item, i) => (
+      <li key={i} className="flex gap-3 items-start">
+        <span className="text-[10px] font-black text-indigo-400 mt-1">{item.t}</span>
+        <p className="text-[11px] text-indigo-800 font-medium">{item.d}</p>
+      </li>
+    ))}
+  </ul>
+</section>

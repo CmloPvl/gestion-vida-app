@@ -5,7 +5,7 @@ import { crearTransaccion } from "@/actions/transacciones"
 import { Button } from "@/components/ui/button" 
 import { Input } from "@/components/ui/input"
 import { DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
-import { ArrowUpCircle, ArrowDownCircle } from "lucide-react"
+import { ArrowUpCircle, ArrowDownCircle, Info, Landmark, Tag } from "lucide-react"
 import { toast } from "sonner"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
@@ -48,10 +48,8 @@ export function AddTransactionForm({ onSuccess, fechaPreseleccionada }: { onSucc
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-
     const formData = new FormData(e.currentTarget)
-    const montoRaw = formData.get("monto")
-    const montoNumerico = Number(montoRaw)
+    const montoNumerico = Number(formData.get("monto"))
 
     if (montoNumerico <= 0) {
       toast.error("Monto inválido", { description: "Ingresa un número mayor a 0." })
@@ -62,12 +60,10 @@ export function AddTransactionForm({ onSuccess, fechaPreseleccionada }: { onSucc
     const ahora = new Date()
     fechaFinal.setHours(ahora.getHours(), ahora.getMinutes(), ahora.getSeconds())
 
-    // --- EL ARREGLO ESTÁ AQUÍ ---
     const payload = {
       nombre: (formData.get("nombre") as string) || "Sin descripción",
       monto: montoNumerico,
-      tipo: tipo, // "INGRESO" o "GASTO"
-      // CAMBIAMOS 'categoria' por 'clasificacion' para que Zod lo reconozca
+      tipo: tipo,
       clasificacion: formData.get("clasificacion") as string, 
       metodo: (formData.get("metodo") as string) || "EFECTIVO",
       fecha: fechaFinal,
@@ -77,51 +73,71 @@ export function AddTransactionForm({ onSuccess, fechaPreseleccionada }: { onSucc
   }
 
   return (
-    <DrawerContent className="px-6 pb-10 max-w-md mx-auto rounded-t-[2.5rem] bg-white border-none shadow-2xl">
-      <DrawerHeader className="pt-6">
-        <DrawerTitle className="text-xl font-black text-center text-slate-800">Nuevo Movimiento</DrawerTitle>
+    <DrawerContent className="px-6 pb-10 max-w-md mx-auto rounded-t-[3rem] bg-white border-none shadow-2xl">
+      <DrawerHeader className="pt-8">
+        <DrawerTitle className="text-2xl font-black text-center text-slate-900 tracking-tight">Nuevo Registro</DrawerTitle>
+        <p className="text-center text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mt-1">
+          {fechaPreseleccionada.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </p>
       </DrawerHeader>
       
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Selector de Flujo */}
+        <div className="flex bg-slate-100 p-1.5 rounded-[1.8rem] gap-1.5">
           <button type="button" onClick={() => setTipo("INGRESO")}
-            className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${tipo === 'INGRESO' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}>
-            <ArrowUpCircle className="inline mr-1" size={16} /> Ingreso
+            className={`flex-1 py-3.5 rounded-[1.4rem] font-bold text-xs transition-all flex items-center justify-center gap-2 ${tipo === 'INGRESO' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 opacity-60'}`}>
+            <ArrowUpCircle size={18} /> INGRESO
           </button>
           <button type="button" onClick={() => setTipo("GASTO")}
-            className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${tipo === 'GASTO' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500'}`}>
-            <ArrowDownCircle className="inline mr-1" size={16} /> Gasto
+            className={`flex-1 py-3.5 rounded-[1.4rem] font-bold text-xs transition-all flex items-center justify-center gap-2 ${tipo === 'GASTO' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 opacity-60'}`}>
+            <ArrowDownCircle size={18} /> GASTO
           </button>
         </div>
 
+        {/* Info Educativa: El impacto del flujo */}
+        <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 flex gap-3 items-start">
+          <Info size={16} className="text-indigo-500 mt-0.5 shrink-0" />
+          <p className="text-[10px] leading-relaxed text-indigo-900 font-medium italic">
+            {tipo === "INGRESO" 
+              ? "Este ingreso aumenta tu flujo libre. Considera destinar un % a tus Activos." 
+              : "Este gasto reduce tu flujo. Asegúrate de que aporte valor a tu calidad de vida."}
+          </p>
+        </div>
+
         <div className="space-y-4">
-          <Input name="nombre" placeholder="¿En qué? (ej: Venta local)" className="h-12 border-none bg-slate-50 rounded-xl px-4 font-bold" required />
+          <div className="relative">
+            <Tag className="absolute left-4 top-4 text-slate-300" size={16} />
+            <Input name="nombre" placeholder="¿En qué se usó el dinero?" className="h-14 border-none bg-slate-50 rounded-2xl pl-11 font-bold text-slate-700" required />
+          </div>
           
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">$</span>
-            <Input name="monto" type="number" inputMode="decimal" min="0.01" step="any" placeholder="0" 
-              className="h-16 text-3xl font-black border-none bg-slate-50 rounded-2xl pl-8" required 
+            <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-300 text-2xl">$</span>
+            <Input name="monto" type="number" inputMode="decimal" placeholder="0" 
+              className="h-24 text-5xl font-black border-none bg-slate-50 rounded-[2.5rem] pl-12 text-slate-900 focus:ring-2 ring-indigo-100" required 
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <select name="metodo" className="h-12 rounded-xl bg-slate-50 border-none px-3 font-bold text-slate-600 outline-none">
-              <option value="EFECTIVO">💵 Efectivo</option>
-              <option value="TARJETA">💳 Tarjeta</option>
-            </select>
-            {/* El name debe ser 'clasificacion' para coincidir con el payload */}
-            <select name="clasificacion" className="h-12 rounded-xl bg-slate-50 border-none px-3 font-bold text-slate-600 outline-none" required>
-              <option value="VIDA">Vida</option>
-              <option value="ACTIVO">Inversión</option>
-              <option value="PASIVO">Deuda</option>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="relative">
+              <Landmark className="absolute left-3 top-4 text-slate-400" size={14} />
+              <select name="metodo" className="w-full h-12 rounded-xl bg-slate-50 border-none pl-8 pr-3 font-bold text-xs text-slate-600 outline-none appearance-none">
+                <option value="EFECTIVO">💵 Efectivo</option>
+                <option value="TARJETA">💳 Débito/Crédito</option>
+              </select>
+            </div>
+            
+            <select name="clasificacion" className="h-12 rounded-xl bg-slate-50 border-none px-3 font-black text-[10px] uppercase tracking-wider text-indigo-600 outline-none appearance-none border-2 border-indigo-50 shadow-sm" required>
+              <option value="VIDA">🍎 Vida/Consumo</option>
+              <option value="ACTIVO">📈 Inversión (Activo)</option>
+              <option value="PASIVO">📉 Deuda (Pasivo)</option>
             </select>
           </div>
         </div>
 
         <Button type="submit" disabled={mutation.isPending}
-          className={`w-full h-14 rounded-2xl font-bold text-white transition-transform active:scale-95 ${tipo === 'INGRESO' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-900 hover:bg-black'}`}
+          className={`w-full h-16 rounded-[2rem] font-black uppercase tracking-widest text-[11px] text-white shadow-xl transition-all active:scale-95 ${tipo === 'INGRESO' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-900 hover:bg-black'}`}
         >
-          {mutation.isPending ? "Cargando..." : "Confirmar Movimiento"}
+          {mutation.isPending ? "Sincronizando..." : "Confirmar Movimiento"}
         </Button>
       </form>
     </DrawerContent>

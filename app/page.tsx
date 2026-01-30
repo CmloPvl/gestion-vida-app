@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { useSession, SessionProvider } from "next-auth/react"
+// Verificamos que las rutas apunten a components/dashboard/
 import WelcomeScreen from "@/components/dashboard/welcome-screen"
 import DashboardClient from "@/components/dashboard/dashboard-client"
 import { obtenerResumenMes } from "@/actions/transacciones"
 
 /**
- * COMPONENTE RAÍZ
+ * COMPONENTE RAÍZ: Mantiene el SessionProvider para Next-Auth
  */
 export default function Home() {
   return (
@@ -26,17 +27,28 @@ function AuthGuard() {
 
   // Efecto para cargar los datos reales de Prisma apenas haya sesión
   useEffect(() => {
+    let isMounted = true; // Control para evitar errores si el componente se desmonta
+
     async function cargarDatos() {
       if (status === "authenticated") {
-        const data = await obtenerResumenMes()
-        setResumen(data)
-        setLoadingData(false)
+        try {
+          const data = await obtenerResumenMes()
+          if (isMounted) {
+            setResumen(data)
+            setLoadingData(false)
+          }
+        } catch (error) {
+          console.error("Error cargando resumen:", error)
+          if (isMounted) setLoadingData(false)
+        }
       }
     }
+    
     cargarDatos()
+    return () => { isMounted = false } // Limpieza
   }, [status])
 
-  // 1. Estado de carga: Mientras verifica sesión o trae datos de base de datos
+  // 1. Estado de carga: Pantalla de carga profesional con tu estética
   if (status === "loading" || (status === "authenticated" && loadingData)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -48,12 +60,12 @@ function AuthGuard() {
     )
   }
 
-  // 2. Si NO hay sesión: Mostramos la bienvenida y formularios
+  // 2. Si NO hay sesión: Redirige a la pantalla de bienvenida (Login/Registro)
   if (!session) {
     return <WelcomeScreen />
   }
 
-  // 3. Si HAY sesión: Dashboard con datos reales de Prisma
+  // 3. Si HAY sesión: Muestra el Dashboard con los datos inyectados
   return (
     <DashboardClient 
       session={session} 

@@ -19,19 +19,19 @@ model User {
   image         String?
   
   // --- CAMPOS PARA SaaS PROFESIONAL ---
-  // Si es null, el usuario no ha verificado su cuenta.
   emailVerified DateTime? 
   
-  // Relaciones existentes
+  // Relaciones
   transacciones      Transaccion[]
   itemsEstrategicos  EstrategicoItem[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  @@map("users")
 }
 
 // --- MODELO PARA TOKENS DE VERIFICACIÓN ---
-// Esencial para validar que el correo realmente existe antes de dar acceso.
 model VerificationToken {
   id      String   @id @default(uuid())
   email   String
@@ -39,6 +39,7 @@ model VerificationToken {
   expires DateTime
 
   @@unique([email, token])
+  @@map("verification_tokens")
 }
 
 // --- MODELO DE TRANSACCIONES ---
@@ -58,6 +59,8 @@ model Transaccion {
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@map("transacciones")
 }
 
 // --- MODELO PARA EL RESUMEN ESTRATÉGICO ---
@@ -72,4 +75,6 @@ model EstrategicoItem {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+
+  @@map("estrategico_items")
 }

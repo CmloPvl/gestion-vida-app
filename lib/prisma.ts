@@ -1,10 +1,8 @@
-// @ts-nocheck
 import { PrismaClient } from '@prisma/client'
 
-// 1. Configuramos el Singleton para evitar múltiples instancias en desarrollo
 const prismaClientSingleton = () => {
   return new PrismaClient({
-    log: ['error'],
+    log: process.env.NODE_ENV === 'development' ? ['error'] : ['error'],
   })
 }
 
@@ -12,13 +10,21 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-// 2. Exportamos la instancia única
 export const prisma = globalForPrisma.prisma ?? prismaClientSingleton()
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
-// 3. Tu función de lógica (La mantenemos aquí por ahora, pero tipada)
-export async function salvarTransaccion(data: any) {
+/**
+ * Función de utilidad para transacciones rápidas.
+ * IMPORTANTE: El userId es obligatorio para cumplir con el RLS de la DB.
+ */
+export async function salvarTransaccion(data: {
+  nombre: string,
+  monto: number,
+  tipo: string,
+  clasificacion: string,
+  userId: string // <-- El candado: Sin ID no hay transacción
+}) {
   return await prisma.transaccion.create({
     data: {
       nombre: data.nombre,
@@ -27,11 +33,9 @@ export async function salvarTransaccion(data: any) {
       clasificacion: data.clasificacion,
       fecha: new Date(),
       completado: true,
-      // Nota: Aquí faltaría el userId para que sea multiusuario real
-      // userId: data.userId 
+      userId: data.userId 
     }
   })
 }
 
-// 4. Exportamos por defecto para que las Actions no den error de "no default export"
 export default prisma;

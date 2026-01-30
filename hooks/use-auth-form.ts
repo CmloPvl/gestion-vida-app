@@ -12,7 +12,7 @@ export function useAuthForm(type: 'login' | 'register', onSuccess?: () => void) 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const router = useRouter();
 
-  // 1. Cambiamos la redirección de Google al Home o Dashboard
+  // 1. Google Auth: Siempre a la raíz
   const handleGoogleAuth = () => signIn("google", { callbackUrl: "/" });
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -24,6 +24,7 @@ export function useAuthForm(type: 'login' | 'register', onSuccess?: () => void) 
       const formData = new FormData(event.currentTarget);
       const data = Object.fromEntries(formData);
       
+      // Validación con Zod (mantiene tu seguridad)
       const validation = authSchema.safeParse(data);
       if (!validation.success) {
         const fieldErrors: { [key: string]: string } = {};
@@ -36,40 +37,45 @@ export function useAuthForm(type: 'login' | 'register', onSuccess?: () => void) 
       }
 
       if (type === 'register') {
+        // Lógica de Registro
         const result = await registrarUsuario(formData);
-        
         if (result?.error) throw new Error(result.error);
 
-        toast.success("Hemos enviado un correo a tu Gmail para verificar tu cuenta y puedas acceder a la app.", {
-          duration: 8000,
+        toast.success("¡Cuenta creada!", {
+          description: "Verifica tu Gmail para poder acceder a la plataforma.",
+          duration: 6000,
         });
         
         if (onSuccess) onSuccess(); 
         
       } else {
+        // Lógica de Login
         const result = await signIn("credentials", {
           email: (data.email as string).toLowerCase(),
           password: data.password as string,
           redirect: false,
         });
 
-        // 2. Manejo específico del error del candado (AccessDenied)
         if (result?.error) {
-          // Si el servidor devolvió un error de credenciales, verificamos si es por falta de verificación
           const errorMessage = result.error === "CredentialsSignin" 
-            ? "Verifica tu email o clave incorrecta" 
+            ? "Email o contraseña incorrectos" 
             : "Debes confirmar tu correo para ingresar";
-          
           throw new Error(errorMessage);
         }
         
         toast.success("¡Bienvenido a Gestión Vida!");
+        
+        // Cerramos el modal de Auth
         if (onSuccess) onSuccess();
         
-        // 3. Redirección limpia al Home (/) o Dashboard
-        // Esto permite que el usuario elija el módulo antes de ir a finanzas
-        router.push("/dashboard"); 
-        router.refresh();
+        /**
+         * CORRECCIÓN DE NAVEGACIÓN:
+         * Usamos un pequeño delay y recarga forzada para que el AuthGuard 
+         * de app/page.tsx detecte la sesión de inmediato y nos deje pasar.
+         */
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 800);
       }
       
     } catch (err: any) {

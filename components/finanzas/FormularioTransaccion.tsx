@@ -1,144 +1,137 @@
 "use client"
 
 import React, { useState } from "react"
-import { Plus, Loader2 } from "lucide-react"
+import { Plus, Loader2, Tag, DollarSign, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { crearTransaccion } from "@/actions/transacciones"
-import { createEstrategicoItem } from "@/actions/estrategico" // Importamos la otra acción
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
-// 1. Categorías dinámicas según el uso
 const CAT_FINANZAS = [
-  { label: "Alimentación", value: "ALIMENTACION" },
-  { label: "Transporte", value: "TRANSPORTE" },
-  { label: "Hogar", value: "HOGAR" },
-  { label: "Salud", value: "SALUD" },
-  { label: "Otros", value: "OTROS" }
+  { label: "🏠 Hogar", value: "HOGAR" },
+  { label: "🍎 Alimentación", value: "ALIMENTACION" },
+  { label: "🚗 Transporte", value: "TRANSPORTE" },
+  { label: "⚕️ Salud", value: "SALUD" },
+  { label: "✨ Estilo de Vida", value: "VIDA" },
+  { label: "⚙️ Otros", value: "OTROS" }
 ]
 
-const CAT_ESTRATEGICO = [
-  { label: "Activo Fijo", value: "ACTIVO" },
-  { label: "Pasivo/Deuda", value: "PASIVO" },
-  { label: "Inversión", value: "INVERSION" },
-  { label: "Patrimonio", value: "VIDA" }
-]
+interface Props {
+  tipoDefault: "INGRESO" | "GASTO"
+}
 
-export function FormularioTransaccion({ 
-  tipoDefault, 
-  isEstrategico = false // Nueva prop para saber dónde estamos
-}: { 
-  tipoDefault: "INGRESO" | "GASTO" | "ACTIVO" | "PASIVO",
-  isEstrategico?: boolean 
-}) {
+export function FormularioTransaccion({ tipoDefault }: Props) {
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ nombre: "", monto: "", subMonto: "", clasificacion: "" })
+  const [form, setForm] = useState({ nombre: "", monto: "", clasificacion: "" })
   const queryClient = useQueryClient()
 
-  // 2. Mutación Inteligente
   const mutation = useMutation({
-    mutationFn: isEstrategico ? createEstrategicoItem : crearTransaccion,
+    mutationFn: crearTransaccion,
     onSuccess: (result: any) => {
       if (result.success) {
-        queryClient.invalidateQueries({ queryKey: isEstrategico ? ["estrategico"] : ["transacciones"] })
-        toast.success("¡Registrado con éxito!")
-        setForm({ nombre: "", monto: "", subMonto: "", clasificacion: "" })
+        queryClient.invalidateQueries({ queryKey: ["transacciones"] })
+        toast.success("Movimiento registrado correctamente")
+        setForm({ nombre: "", monto: "", clasificacion: "" })
         setOpen(false)
       } else {
-        toast.error("Error", { description: result.error })
+        toast.error(result.error || "Error al procesar")
       }
     }
   })
 
   const handleSubmit = async () => {
-    if (!form.nombre.trim()) return toast.error("Escribe una descripción");
+    if (!form.nombre.trim()) return toast.error("La descripción es necesaria");
     const montoNum = Number(form.monto);
-    if (isNaN(montoNum) || montoNum <= 0) return toast.error("Monto inválido");
+    if (isNaN(montoNum) || montoNum <= 0) return toast.error("Ingresa un monto válido");
+    if (!form.clasificacion) return toast.error("Selecciona una categoría");
 
-    if (isEstrategico) {
-      // Lógica para Plan Estratégico
-      mutation.mutate({
-        nombre: form.nombre.trim(),
-        monto: montoNum, // En estratégico, el monto suele ser el valor base
-        subMonto: Number(form.subMonto) || montoNum,
-        tipo: tipoDefault 
-      } as any)
-    } else {
-      // Lógica para Finanzas Diarias
-      if (!form.clasificacion) return toast.error("Selecciona una categoría");
-      mutation.mutate({
-        nombre: form.nombre.trim(),
-        monto: montoNum,
-        tipo: tipoDefault,
-        clasificacion: form.clasificacion,
-        metodo: "EFECTIVO",
-        fecha: new Date()
-      } as any)
-    }
+    mutation.mutate({
+      nombre: form.nombre.trim(),
+      monto: montoNum,
+      tipo: tipoDefault,
+      clasificacion: form.clasificacion,
+      metodo: "EFECTIVO"
+    })
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button 
-          className={`rounded-2xl shadow-sm h-11 px-4 active:scale-90 transition-all ${
-            tipoDefault === "INGRESO" || tipoDefault === "ACTIVO" ? "bg-emerald-500" : "bg-rose-500"
-          } text-white font-bold border-none`}
+          className={`rounded-2xl h-12 px-6 active:scale-95 transition-all font-bold border-none shadow-lg ${
+            tipoDefault === "INGRESO" 
+            ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100" 
+            : "bg-slate-900 hover:bg-slate-800 shadow-slate-200"
+          } text-white`}
         >
-          <Plus size={18} className={isEstrategico ? "" : "mr-2"} />
-          {!isEstrategico && (tipoDefault === "INGRESO" ? "Nuevo Ingreso" : "Nuevo Gasto")}
+          <Plus size={18} className="mr-2" />
+          {tipoDefault === "INGRESO" ? "Nuevo Ingreso" : "Nuevo Gasto"}
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="rounded-[2.5rem] w-[94%] max-w-sm p-8 bg-white border-none shadow-2xl">
-        <DialogHeader className="mb-4">
-          <DialogTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
-            {isEstrategico ? `Añadir a ${tipoDefault}` : `Nuevo ${tipoDefault}`}
+      <DialogContent className="rounded-[2.5rem] w-[95%] max-w-sm p-8 bg-white border-none shadow-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-center mb-6">
+            Flujo de Caja: {tipoDefault}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <Input 
-            placeholder="Nombre / Descripción" 
-            value={form.nombre} 
-            onChange={(e) => setForm({...form, nombre: e.target.value})} 
-            className="rounded-2xl bg-slate-50 border-none h-14 px-5 font-bold" 
-          />
-          <Input 
-            type="number" 
-            placeholder={isEstrategico ? "Monto Base ($)" : "Monto ($)"}
-            value={form.monto} 
-            onChange={(e) => setForm({...form, monto: e.target.value})} 
-            className="rounded-2xl bg-slate-50 border-none h-14 px-5 font-bold text-lg" 
-          />
+        <div className="space-y-5">
+          {/* Descripción */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-wider">Concepto</label>
+            <div className="relative">
+              <Tag className="absolute left-4 top-4 text-slate-300" size={18} />
+              <Input 
+                placeholder="Ej: Compra mensual, Bonus..." 
+                value={form.nombre} 
+                onChange={(e) => setForm({...form, nombre: e.target.value})} 
+                className="rounded-2xl bg-slate-50 border-none h-14 pl-12 font-bold focus:ring-2 ring-slate-100" 
+              />
+            </div>
+          </div>
 
-          {isEstrategico ? (
-            <Input 
-              type="number" 
-              placeholder="Valor Actual ($)" 
-              value={form.subMonto} 
-              onChange={(e) => setForm({...form, subMonto: e.target.value})} 
-              className="rounded-2xl bg-indigo-50/50 border-none h-14 px-5 font-bold text-indigo-600" 
-            />
-          ) : (
-            <select 
-              value={form.clasificacion}
-              onChange={(e) => setForm({...form, clasificacion: e.target.value})}
-              className="w-full rounded-2xl bg-slate-50 border-none h-14 px-5 font-bold text-slate-900"
-            >
-              <option value="" disabled>Categoría</option>
-              {CAT_FINANZAS.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
-            </select>
-          )}
+          {/* Monto */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-wider">Cantidad (CLP)</label>
+            <div className="relative">
+              <DollarSign className="absolute left-4 top-4 text-slate-300" size={18} />
+              <Input 
+                type="number" 
+                placeholder="0" 
+                value={form.monto} 
+                onChange={(e) => setForm({...form, monto: e.target.value})} 
+                className="rounded-2xl bg-slate-50 border-none h-14 pl-12 font-bold text-lg focus:ring-2 ring-slate-100" 
+              />
+            </div>
+          </div>
+
+          {/* Categoría */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-wider">Clasificación</label>
+            <div className="relative">
+                <Wallet className="absolute left-4 top-4 text-slate-300" size={18} />
+                <select 
+                  value={form.clasificacion}
+                  onChange={(e) => setForm({...form, clasificacion: e.target.value})}
+                  className="w-full rounded-2xl bg-slate-50 border-none h-14 pl-12 pr-5 font-bold text-slate-900 appearance-none focus:ring-2 ring-slate-100"
+                >
+                  <option value="" disabled>Seleccionar...</option>
+                  {CAT_FINANZAS.map(cat => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
+                </select>
+            </div>
+          </div>
 
           <Button 
             onClick={handleSubmit} 
             disabled={mutation.isPending}
-            className="w-full h-16 rounded-[2rem] bg-slate-900 font-black text-white shadow-xl mt-4 uppercase tracking-widest text-[11px]"
+            className={`w-full h-16 rounded-[2rem] font-black text-white shadow-xl mt-4 uppercase tracking-widest text-[11px] active:scale-95 transition-all border-none ${
+                tipoDefault === 'INGRESO' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-900 hover:bg-black'
+            }`}
           >
-            {mutation.isPending ? <Loader2 className="animate-spin" size={18} /> : "Confirmar"}
+            {mutation.isPending ? <Loader2 className="animate-spin" size={18} /> : `Confirmar ${tipoDefault}`}
           </Button>
         </div>
       </DialogContent>

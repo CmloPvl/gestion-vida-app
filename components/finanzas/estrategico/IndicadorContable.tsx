@@ -1,140 +1,93 @@
 "use client"
 
-import { useState } from "react"
-import { crearTransaccion } from "@/actions/transacciones"
-import { Button } from "@/components/ui/button" 
-import { Input } from "@/components/ui/input"
-import { DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
-import { ArrowUpCircle, ArrowDownCircle } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Info, ArrowUpRight, ArrowDownRight, Lightbulb, ShieldCheck, Zap, Scale, AlertCircle } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
-interface AddTransactionFormProps {
-  onSuccess?: () => void;
-  fechaPreseleccionada: Date;
+interface IndicadorContableProps {
+  patrimonio: number;
+  margen: number;
+  ahorro: number;
+  ratio: number;
+  totalActivos?: number;
+  totalPasivos?: number;
 }
 
-export function AddTransactionForm({ onSuccess, fechaPreseleccionada }: AddTransactionFormProps) {
-  const [loading, setLoading] = useState(false)
-  const [tipo, setTipo] = useState("GASTO")
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-
-    const formData = new FormData(e.currentTarget)
-    
-    // Sincronizamos la fecha seleccionada con la hora actual para el orden cronológico
-    const fechaFinal = new Date(fechaPreseleccionada)
-    const ahora = new Date()
-    fechaFinal.setHours(ahora.getHours(), ahora.getMinutes(), ahora.getSeconds())
-
-    // CREAMOS EL OBJETO PLANO UNIFICADO
-    // Nota: 'categoria' es lo que espera la Action, 'clasificacion' es el nombre en el HTML del select
-    const payload = {
-      nombre: formData.get("nombre") as string,
-      monto: Number(formData.get("monto")),
-      tipo: tipo, // "INGRESO" o "GASTO"
-      categoria: formData.get("clasificacion") as string, // <--- MAPEADO PARA EVITAR EL ERROR
-      metodo: formData.get("metodo") as string,
-      fecha: fechaFinal,
-    }
-
-    try {
-      const result = await crearTransaccion(payload)
-      
-      if (result.success) {
-        if (onSuccess) onSuccess()
-      } else {
-        alert(result.error || "Error al guardar")
-      }
-    } catch (error) {
-      alert("Error de conexión con el servidor")
-    } finally {
-      setLoading(false)
-    }
+export function IndicadorContable({ patrimonio, margen, ahorro, ratio, totalActivos, totalPasivos }: IndicadorContableProps) {
+  
+  const obtenerDiagnostico = () => {
+    if (ratio >= 100) return { label: "Independencia Total", color: "text-emerald-500", icon: <Zap size={14} />, desc: "Tus activos ya cubren tu vida." }
+    if (margen > 30) return { label: "Estructura Saludable", color: "text-indigo-500", icon: <ShieldCheck size={14} />, desc: "Gran capacidad de ahorro y reinversión." }
+    if (ahorro < 0) return { label: "Déficit Operativo", color: "text-rose-500", icon: <AlertCircle size={14} />, desc: "Alerta: Gastas más de lo que generas." }
+    return { label: "Balance Estable", color: "text-slate-500", icon: <Scale size={14} />, desc: "Flujo equilibrado, foco en aumentar activos." }
   }
+  
+  const estado = obtenerDiagnostico();
 
   return (
-    <DrawerContent className="px-6 pb-10 max-w-md mx-auto rounded-t-[2.5rem] border-none shadow-2xl bg-white">
-      <DrawerHeader className="pt-8">
-        <DrawerTitle className="text-2xl font-black text-center tracking-tight text-slate-800">
-          Nuevo Registro
-        </DrawerTitle>
-        <p className="text-center text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em]">
-          {fechaPreseleccionada.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
-        </p>
-      </DrawerHeader>
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Selector de Tipo */}
-        <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-2">
-          <button
-            type="button"
-            onClick={() => setTipo("INGRESO")}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${
-              tipo === 'INGRESO' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'
-            }`}
-          >
-            <ArrowUpCircle size={18} /> Ingreso
-          </button>
-          <button
-            type="button"
-            onClick={() => setTipo("GASTO")}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${
-              tipo === 'GASTO' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500'
-            }`}
-          >
-            <ArrowDownCircle size={18} /> Gasto
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          <Input 
-            name="nombre" 
-            placeholder="Descripción (ej: Supermercado, Sueldo)" 
-            className="h-14 text-base border-none bg-slate-50 rounded-2xl px-5 focus-visible:ring-2 focus-visible:ring-slate-200" 
-            required 
-          />
+    <TooltipProvider delayDuration={100}>
+      <Card className="border-none shadow-2xl rounded-[2.5rem] bg-white overflow-hidden border border-slate-100">
+        <CardContent className="p-8 space-y-8">
           
-          <div className="relative">
-            <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xl">$</span>
-            <Input 
-              name="monto" 
-              type="number" 
-              placeholder="0" 
-              className="h-20 text-4xl font-black border-none bg-slate-50 rounded-[2rem] pl-10 text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-200" 
-              required 
-            />
+          {/* TÍTULO CON TOOLTIP EDUCATIVO */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-indigo-600">
+                <Lightbulb size={14} className="fill-indigo-100" />
+                <p className="text-[10px] font-black uppercase tracking-[0.2em]">Riqueza Real</p>
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Patrimonio Neto</h2>
+            </div>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="p-2 bg-slate-50 rounded-full hover:bg-slate-100 transition-colors">
+                  <Info className="h-5 w-5 text-slate-400" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-62.5 bg-slate-900 text-white p-4 rounded-2xl border-none shadow-2xl">
+                <p className="text-xs leading-relaxed">
+                  <span className="font-black text-emerald-400">Educación Financiera:</span> El Patrimonio es lo que realmente te pertenece (Activos - Deudas). El Margen de Seguridad indica qué tan "protegido" estás ante imprevistos.
+                </p>
+              </TooltipContent>
+            </Tooltip>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Método</label>
-              <select name="metodo" className="w-full h-14 rounded-2xl bg-slate-50 border-none px-4 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-slate-200 appearance-none">
-                <option value="EFECTIVO">💵 Efectivo</option>
-                <option value="TARJETA">💳 Tarjeta</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Categoría</label>
-              <select name="clasificacion" className="w-full h-14 rounded-2xl bg-slate-50 border-none px-4 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-slate-200 appearance-none">
-                <option value="VIDA">Vida</option>
-                <option value="ACTIVO">Inversión</option>
-                <option value="PASIVO">Deuda</option>
-              </select>
+          {/* NÚMERO MAESTRO (PATRIMONIO) */}
+          <div className="py-2">
+            <p className={`text-5xl font-black tracking-tighter ${patrimonio >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
+              ${patrimonio.toLocaleString('es-CL')}
+            </p>
+            <div className="flex items-center gap-3 mt-4">
+               <div className={cn("flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-slate-50", estado.color)}>
+                  {estado.icon} {estado.label}
+               </div>
+               <p className="text-[9px] text-slate-400 font-medium italic">{estado.desc}</p>
             </div>
           </div>
-        </div>
 
-        <Button 
-          type="submit" 
-          disabled={loading}
-          className={`w-full h-16 rounded-[1.8rem] text-lg font-bold shadow-lg transition-all active:scale-95 ${
-            tipo === 'INGRESO' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-900 hover:bg-black'
-          } text-white`}
-        >
-          {loading ? "Registrando..." : "Confirmar Movimiento"}
-        </Button>
-      </form>
-    </DrawerContent>
+          {/* MÉTRICAS SECUNDARIAS (MARGEN Y FLUJO) */}
+          <div className="grid grid-cols-2 gap-4 pt-6 border-t border-slate-50">
+            <div className="space-y-1">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Margen de Ahorro</p>
+              <p className={cn("text-xl font-black tracking-tighter", margen > 10 ? "text-slate-900" : "text-rose-600")}>
+                {margen.toFixed(1)}%
+              </p>
+              <p className="text-[8px] text-slate-400">Eficiencia de tu capital.</p>
+            </div>
+
+            <div className="space-y-1 text-right">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Flujo Neto</p>
+              <p className={cn("text-xl font-black tracking-tighter", ahorro >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                {ahorro >= 0 ? '+' : ''}${ahorro.toLocaleString('es-CL')}
+              </p>
+              <p className="text-[8px] text-slate-400">Dinero libre mensual.</p>
+            </div>
+          </div>
+
+        </CardContent>
+      </Card>
+    </TooltipProvider>
   )
 }
