@@ -3,8 +3,10 @@ import Credentials from "next-auth/providers/credentials"
 import Google from "next-auth/providers/google"
 import db from "./prisma/client"
 import bcrypt from "bcryptjs"
+import { PrismaAdapter } from "@auth/prisma-adapter" // <--- Agregado
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  adapter: PrismaAdapter(db), // <--- Conexión oficial con tu DB
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -20,6 +22,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           where: { email },
         })
 
+        // Si el usuario no existe o se registró con Google (no tiene password)
         if (!user || !user.password) return null
 
         const isValid = await bcrypt.compare(
@@ -34,7 +37,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           throw new Error("EmailNotVerified") 
         }
 
-        // Retornamos el objeto que se guardará en el JWT inicial
         return {
           id: user.id,
           name: user.name,
@@ -45,14 +47,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user }) {
-      // Si el usuario acaba de iniciar sesión, pasamos el ID al token
       if (user) {
         token.sub = user.id
       }
       return token
     },
     async session({ session, token }) {
-      // Inyectamos el ID del token directamente en la sesión
       if (token.sub && session.user) {
         session.user.id = token.sub
       }
@@ -65,7 +65,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   session: { 
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 días de sesión para no tener que loguearte a cada rato en el local
+    maxAge: 30 * 24 * 60 * 60, // 30 días
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  // Nota: En Auth v5, la variable preferida es AUTH_SECRET, 
+  // pero mantendremos tu referencia por compatibilidad.
+  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
 })
