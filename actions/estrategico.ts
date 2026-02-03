@@ -1,67 +1,12 @@
-"use server";
+import { PrismaClient } from '@prisma/client'
 
-import prisma from "@/lib/prisma";
-import { auth } from "@/auth";
-import { revalidatePath } from "next/cache";
-import { estrategicoSchema } from "@/lib/schemas/estrategico";
-
-export async function createEstrategicoItem(data: {
-  nombre: string;
-  monto: number;
-  subMonto?: number;
-  seccion: "ingresos" | "gastos" | "activos" | "pasivos";
-}) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "No autorizado" };
-
-  const result = estrategicoSchema.safeParse(data);
-  if (!result.success) {
-    return { success: false, error: result.error.issues[0]?.message || "Datos inválidos" };
-  }
-
-  try {
-    await prisma.estrategicoItem.create({
-      data: {
-        nombre: result.data.nombre,
-        monto: result.data.monto,
-        subMonto: result.data.subMonto || 0,
-        seccion: data.seccion,
-        userId: session.user.id,
-      },
-    });
-
-    // REVALIDACIÓN: Crucial para que el balance en /finanzas se actualice
-    revalidatePath("/finanzas");
-    revalidatePath("/finanzas/estrategico");
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: "Error al guardar en la base de datos" };
-  }
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
 }
 
-export async function getEstrategicoItems() {
-  const session = await auth();
-  if (!session?.user?.id) return [];
-  return await prisma.estrategicoItem.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-  });
-}
+export const prisma = globalForPrisma.prisma ?? new PrismaClient()
 
-export async function deleteEstrategicoItem(id: string) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "No autorizado" };
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
-  try {
-    await prisma.estrategicoItem.delete({
-      where: { id, userId: session.user.id },
-    });
-    
-    // REVALIDACIÓN: Crucial al eliminar
-    revalidatePath("/finanzas");
-    revalidatePath("/finanzas/estrategico");
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: "No se pudo eliminar" };
-  }
-}
+// BORRA TODO LO DEMÁS DE ESTE ARCHIVO. 
+// No necesitamos "salvarTransaccion" aquí porque causaba errores de tipos en Vercel.

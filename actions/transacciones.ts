@@ -29,6 +29,7 @@ export async function crearTransaccion(rawData: any) {
 
     const data = validacion.data;
 
+    // ✅ CORRECCIÓN PARA VERCEL: Usamos 'user' con 'connect'
     await db.transaccion.create({
       data: {
         nombre: data.nombre, 
@@ -37,8 +38,10 @@ export async function crearTransaccion(rawData: any) {
         clasificacion: data.clasificacion, 
         metodo: data.metodo,       
         fecha: data.fecha,   
-        userId: session.user.id,
-        completado: true
+        completado: true,
+        user: {
+          connect: { id: session.user.id }
+        }
       },
     });
 
@@ -74,10 +77,6 @@ export async function obtenerTransaccionesPorFecha(fechaBase: Date) {
   }
 }
 
-/**
- * RESUMEN HÍBRIDO PROFESIONAL
- * Suma los movimientos del Pad + los items fijos del Estratégico
- */
 export async function obtenerResumenMes(fechaReferencia: Date = new Date()) {
   try {
     const session = await auth();
@@ -87,7 +86,6 @@ export async function obtenerResumenMes(fechaReferencia: Date = new Date()) {
     const inicioMes = new Date(fechaReferencia.getFullYear(), fechaReferencia.getMonth(), 1);
     const finMes = new Date(fechaReferencia.getFullYear(), fechaReferencia.getMonth() + 1, 0, 23, 59, 59);
 
-    // Consulta consolidada
     const [transacciones, itemsEstrategicos] = await Promise.all([
       db.transaccion.findMany({ 
         where: { userId, fecha: { gte: inicioMes, lte: finMes } } 
@@ -97,11 +95,9 @@ export async function obtenerResumenMes(fechaReferencia: Date = new Date()) {
       })
     ]);
 
-    // Suma del Pad (Registro Diario)
     const ingDiarios = transacciones.filter(t => t.tipo === "INGRESO").reduce((s, t) => s + t.monto, 0);
     const gasDiarios = transacciones.filter(t => t.tipo === "GASTO").reduce((s, t) => s + t.monto, 0);
 
-    // Suma del Estratégico (Sueldo, Arriendo, etc)
     const ingFijos = itemsEstrategicos.filter(i => i.seccion === "ingresos").reduce((s, i) => s + i.monto, 0);
     const gasFijos = itemsEstrategicos.filter(i => i.seccion === "gastos").reduce((s, i) => s + i.monto, 0);
 
