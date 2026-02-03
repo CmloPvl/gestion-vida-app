@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useTransition } from "react"
-import { Trash2, Info, Loader2 } from "lucide-react"
+import { Trash2, Info, Loader2, Activity } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
@@ -35,7 +35,18 @@ function BotonAyuda({ titulo, explicacion }: { titulo: string, explicacion: stri
   )
 }
 
-export function SectionContainer({ title, detail, icon, color, items, isAsset, isLiability, ayuda, seccion }: any) {
+export function SectionContainer({ 
+  title, 
+  detail, 
+  icon, 
+  color, 
+  items, 
+  isAsset, 
+  isLiability, 
+  ayuda, 
+  seccion,
+  montoExtra = 0 
+}: any) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -46,7 +57,7 @@ export function SectionContainer({ title, detail, icon, color, items, isAsset, i
     slate: "text-slate-600 bg-slate-50" 
   }
 
-  const textColor = colorMap[color].split(' ')[0];
+  const textColor = colorMap[color]?.split(' ')[0] || "text-slate-600";
 
   const handleDelete = (id: string) => {
     startTransition(async () => {
@@ -73,20 +84,37 @@ export function SectionContainer({ title, detail, icon, color, items, isAsset, i
             <p className="text-[10px] text-slate-400 font-bold mt-1.5 uppercase tracking-tighter">{detail}</p>
           </div>
         </div>
-        {/* AQUÍ ESTABA EL ERROR: Faltaba pasar 'seccion' */}
-        <FormularioEstrategico 
-          title={title} 
-          seccion={seccion} 
-          needsSubMonto={isAsset || isLiability} 
-        />
+        <FormularioEstrategico title={title} seccion={seccion} needsSubMonto={isAsset || isLiability} />
       </header>
 
       <div className="space-y-3">
-        {(!items || items.length === 0) && (
+        {montoExtra > 0 && (
+          <Card className="border-none shadow-sm rounded-[1.8rem] bg-slate-50/50 border border-dashed border-slate-200 overflow-hidden italic">
+            <CardContent className="p-5 flex justify-between items-center opacity-70">
+              <div className="flex items-center gap-4">
+                <div className="w-1 h-10 rounded-full bg-slate-300" />
+                <div className="flex flex-col">
+                  <p className="font-bold text-slate-500 text-xs uppercase tracking-tight flex items-center gap-1">
+                    <Activity size={10} /> Movimientos Diarios
+                  </p>
+                  <p className="text-[9px] text-slate-400 font-medium">Sincronizado desde el Pad</p>
+                </div>
+              </div>
+              <div className="text-right px-4">
+                <p className="font-black text-sm text-slate-500">
+                  ${montoExtra.toLocaleString('es-CL')}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {(!items || items.length === 0) && montoExtra === 0 && (
           <div className="bg-white/40 border-2 border-dashed border-slate-100 rounded-[1.8rem] py-8 flex flex-col items-center">
             <p className="text-[10px] text-slate-300 font-black uppercase tracking-widest">Sin registros aún</p>
           </div>
         )}
+
         {items?.map((item: any) => (
           <Card key={item.id} className="border-none shadow-sm rounded-[1.8rem] bg-white overflow-hidden group hover:shadow-md transition-all">
             <CardContent className="p-5 flex justify-between items-center">
@@ -96,13 +124,19 @@ export function SectionContainer({ title, detail, icon, color, items, isAsset, i
                   <p className="font-bold text-slate-800 text-sm">{item.nombre}</p>
                   {(isAsset || isLiability) && (
                     <p className="text-[9px] text-slate-400 font-black uppercase tracking-tighter mt-0.5">
-                      Base: ${item.monto.toLocaleString('es-CL')}
+                      {isAsset ? "Patrimonio: " : "Deuda Total: "} 
+                      ${item.monto.toLocaleString('es-CL')}
                     </p>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right">
+                  {(isAsset || isLiability) && (
+                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest leading-none mb-1">
+                      {isAsset ? "Ingreso" : "Cuota"}
+                    </p>
+                  )}
                   <p className={cn("font-black text-sm tracking-tighter", textColor)}>
                     ${ (isAsset || isLiability ? item.subMonto : item.monto)?.toLocaleString('es-CL') }
                   </p>

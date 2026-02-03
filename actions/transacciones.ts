@@ -10,20 +10,18 @@ export async function crearTransaccion(rawData: any) {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "No autorizado" };
 
-    // ASEGURAMOS QUE NADA LLEGUE COMO UNDEFINED ANTES DE PASAR POR ZOD
     const dataToValidate = {
       nombre: rawData.nombre || "Sin descripción",
       monto: Number(rawData.monto),
-      tipo: rawData.tipo, // INGRESO o GASTO
+      tipo: rawData.tipo, 
       clasificacion: rawData.clasificacion,
-      metodo: rawData.metodo || "EFECTIVO", // <--- Si falta, le ponemos EFECTIVO
+      metodo: rawData.metodo || "EFECTIVO", 
       fecha: rawData.fecha ? new Date(rawData.fecha) : new Date(),
     };
 
     const validacion = transaccionSchema.safeParse(dataToValidate);
 
     if (!validacion.success) {
-      // Si falla, imprimimos en consola para que tú veas qué campo falta
       console.error("❌ ZOD ERROR:", validacion.error.format());
       const errorMsg = validacion.error.issues[0]?.message || "Datos inválidos";
       return { success: false, error: errorMsg };
@@ -45,17 +43,13 @@ export async function crearTransaccion(rawData: any) {
     });
 
     revalidatePath("/finanzas");
-    revalidatePath("/");
+    revalidatePath("/finanzas/estrategico"); 
     return { success: true };
   } catch (error) {
     console.error("❌ ERROR AL GUARDAR:", error);
     return { success: false, error: "Error de servidor al guardar la transacción." };
   }
 }
-
-/**
- * EL RESTO DE TUS FUNCIONES (LEER, RESUMEN, ELIMINAR) ESTÁN PERFECTAS
- */
 
 export async function obtenerTransaccionesPorFecha(fechaBase: Date) {
   try {
@@ -80,31 +74,43 @@ export async function obtenerTransaccionesPorFecha(fechaBase: Date) {
   }
 }
 
-export async function obtenerResumenMes() {
+/**
+ * RESUMEN HÍBRIDO PROFESIONAL
+ * Suma los movimientos del Pad + los items fijos del Estratégico
+ */
+export async function obtenerResumenMes(fechaReferencia: Date = new Date()) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { ingresos: 0, gastos: 0 };
 
-    const ahora = new Date();
-    const primerDiaMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+    const userId = session.user.id;
+    const inicioMes = new Date(fechaReferencia.getFullYear(), fechaReferencia.getMonth(), 1);
+    const finMes = new Date(fechaReferencia.getFullYear(), fechaReferencia.getMonth() + 1, 0, 23, 59, 59);
 
-    const transacciones = await db.transaccion.findMany({
-      where: {
-        userId: session.user.id,
-        fecha: { gte: primerDiaMes }
-      },
-    });
+    // Consulta consolidada
+    const [transacciones, itemsEstrategicos] = await Promise.all([
+      db.transaccion.findMany({ 
+        where: { userId, fecha: { gte: inicioMes, lte: finMes } } 
+      }),
+      db.estrategicoItem.findMany({ 
+        where: { userId, seccion: { in: ["ingresos", "gastos"] } } 
+      })
+    ]);
 
-    const ingresos = transacciones
-      .filter(t => t.tipo === "INGRESO")
-      .reduce((sum, t) => sum + t.monto, 0);
+    // Suma del Pad (Registro Diario)
+    const ingDiarios = transacciones.filter(t => t.tipo === "INGRESO").reduce((s, t) => s + t.monto, 0);
+    const gasDiarios = transacciones.filter(t => t.tipo === "GASTO").reduce((s, t) => s + t.monto, 0);
 
-    const gastos = transacciones
-      .filter(t => t.tipo === "GASTO")
-      .reduce((sum, t) => sum + t.monto, 0);
+    // Suma del Estratégico (Sueldo, Arriendo, etc)
+    const ingFijos = itemsEstrategicos.filter(i => i.seccion === "ingresos").reduce((s, i) => s + i.monto, 0);
+    const gasFijos = itemsEstrategicos.filter(i => i.seccion === "gastos").reduce((s, i) => s + i.monto, 0);
 
-    return { ingresos, gastos };
+    return { 
+      ingresos: ingDiarios + ingFijos, 
+      gastos: gasDiarios + gasFijos
+    };
   } catch (error) {
+    console.error("❌ ERROR EN RESUMEN:", error);
     return { ingresos: 0, gastos: 0 };
   }
 }
@@ -115,17 +121,13 @@ export async function eliminarTransaccion(id: string) {
     if (!session?.user?.id) return { success: false, error: "No autorizado" };
 
     await db.transaccion.delete({
-      where: { 
-        id: id,
-        userId: session.user.id 
-      }
+      where: { id: id, userId: session.user.id }
     });
 
     revalidatePath("/finanzas");
-    revalidatePath("/");
+    revalidatePath("/finanzas/estrategico");
     return { success: true };
   } catch (error) {
-    console.error("❌ ERROR AL ELIMINAR:", error);
-    return { success: false, error: "No se pudo eliminar la transacción." };
+    return { success: false, error: "No se pudo eliminar." };
   }
 }

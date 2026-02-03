@@ -62,7 +62,7 @@ export default function FinanzasPage() {
 
 <header className="space-y-1">
   <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-    Flujo de Efectivo
+    Flujo de dinero
   </h1>
   <div className="flex items-center gap-2">
     <div className="relative flex h-2 w-2">
@@ -85,6 +85,10 @@ export default function FinanzasPage() {
                 ingresos={resumen.ingresos} 
                 gastos={resumen.gastos} 
               />
+              {/* PEGA ESTO AQUÍ: Un pequeño recordatorio de que el balance es "Inteligente" */}
+<p className="px-6 text-[9px] text-slate-400 font-bold uppercase tracking-tight -mt-4 italic">
+  * Balance incluye flujo estratégico y gastos diarios.
+</p>
 
               <div className="bg-white rounded-[2.5rem] p-2 shadow-sm border border-slate-100/50">
                 <AuditoriaCalendario 
@@ -156,3 +160,4 @@ function FinanzasSkeleton() {
     ))}
   </ul>
 </section>
+

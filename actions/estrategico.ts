@@ -14,15 +14,9 @@ export async function createEstrategicoItem(data: {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "No autorizado" };
 
-  // Validación con safeParse
   const result = estrategicoSchema.safeParse(data);
-
   if (!result.success) {
-    // Acceso seguro a los mensajes de error de Zod
-    return { 
-      success: false, 
-      error: result.error.issues[0]?.message || "Datos inválidos" 
-    };
+    return { success: false, error: result.error.issues[0]?.message || "Datos inválidos" };
   }
 
   try {
@@ -36,6 +30,8 @@ export async function createEstrategicoItem(data: {
       },
     });
 
+    // REVALIDACIÓN: Crucial para que el balance en /finanzas se actualice
+    revalidatePath("/finanzas");
     revalidatePath("/finanzas/estrategico");
     return { success: true };
   } catch (error) {
@@ -60,6 +56,9 @@ export async function deleteEstrategicoItem(id: string) {
     await prisma.estrategicoItem.delete({
       where: { id, userId: session.user.id },
     });
+    
+    // REVALIDACIÓN: Crucial al eliminar
+    revalidatePath("/finanzas");
     revalidatePath("/finanzas/estrategico");
     return { success: true };
   } catch (error) {

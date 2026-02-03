@@ -9,39 +9,40 @@ export function useFinanzas() {
   const queryClient = useQueryClient()
   const [fechaSeleccionada, setFechaSeleccionada] = useState<Date>(new Date())
 
-  // 1. Query Movimientos
+  // 1. Query Movimientos (Día específico)
   const { data: movimientos = [], isLoading: loadingMovimientos } = useQuery({
     queryKey: ["transacciones", fechaSeleccionada.toISOString().split('T')[0]],
     queryFn: () => obtenerTransaccionesPorFecha(fechaSeleccionada),
   })
 
-  // 2. Query Resumen
-  const { data: resumen = { ingresos: 0, gastos: 0 }, isLoading: loadingResumen } = useQuery({
-    queryKey: ["resumen-mes"],
-    queryFn: () => obtenerResumenMes(),
+  // 2. Query Resumen Híbrido (Sincronizado con el mes de la fecha seleccionada)
+  const { data: resumen = { ingresos: 0, gastos: 0, progreso: 0, ingresosPasivos: 0, estado: "Cargando..." }, isLoading: loadingResumen } = useQuery({
+    // CAMBIO: La llave ahora depende del mes/año seleccionado para que el balance se actualice
+    queryKey: ["resumen-mes-hibrido", fechaSeleccionada.getMonth(), fechaSeleccionada.getFullYear()], 
+    queryFn: () => obtenerResumenMes(fechaSeleccionada), // Pasamos la fecha para que el action sepa qué mes sumar
+    refetchOnWindowFocus: true, 
   })
 
-  // 3. Mutación para eliminar
+  // 3. Mutación para eliminar (Simplificada para asegurar limpieza)
   const borrarMutation = useMutation({
-    mutationFn: eliminarTransaccion,
+    mutationFn: (id: string) => eliminarTransaccion(id),
     onSuccess: (result) => {
       if (result.success) {
+        // Limpiamos todo el cache de finanzas para forzar reconexión
         queryClient.invalidateQueries({ queryKey: ["transacciones"] })
-        queryClient.invalidateQueries({ queryKey: ["resumen-mes"] })
-        toast.success("Eliminado correctamente")
+        queryClient.invalidateQueries({ queryKey: ["resumen-mes-hibrido"] })
+        toast.success("Movimiento eliminado");
       } else {
-        toast.error(result.error || "No se pudo eliminar")
+        toast.error(result.error || "No se pudo eliminar");
       }
     }
   })
 
-  // 4. Función Refetch (Esta es la que faltaba en el return)
   const refetch = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["transacciones"] })
-    await queryClient.invalidateQueries({ queryKey: ["resumen-mes"] })
+    await queryClient.refetchQueries({ queryKey: ["transacciones"] });
+    await queryClient.refetchQueries({ queryKey: ["resumen-mes-hibrido"] });
   }
 
-  // IMPORTANTE: Asegúrate de que TODOS estos valores estén aquí
   return {
     fechaSeleccionada,
     setFechaSeleccionada,
@@ -50,6 +51,6 @@ export function useFinanzas() {
     loading: loadingMovimientos || loadingResumen,
     eliminar: borrarMutation.mutate,
     isDeleting: borrarMutation.isPending,
-    refetch // <--- AGREGAR ESTO
+    refetch 
   }
 }
