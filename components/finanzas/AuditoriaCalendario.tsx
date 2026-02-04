@@ -33,7 +33,7 @@ export function AuditoriaCalendario({ fecha, onDateChange }: AuditoriaProps) {
             Historial
           </h2>
         </div>
-        <div className="h-[1px] flex-1 bg-slate-100 mx-4" />
+        <div className="h-1px flex-1 bg-slate-100 mx-4" />
       </div>
 
       <div className="bg-white rounded-[2.5rem] p-5 shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-slate-100">
@@ -95,7 +95,7 @@ export function AuditoriaCalendario({ fecha, onDateChange }: AuditoriaProps) {
         </NoSSR>
       </div>
 
-      <p className="text-center mt-4 text-[9px] font-bold text-slate-400 uppercase tracking-[0.1em]">
+      <p className="text-center mt-4 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
         Selecciona un día para auditar movimientos
       </p>
     </section>
