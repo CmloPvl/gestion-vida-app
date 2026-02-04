@@ -18,17 +18,15 @@ model User {
   password      String
   image         String?
   
-  // --- CAMPOS PARA SaaS PROFESIONAL ---
   emailVerified DateTime? 
   
-  // Relaciones
-  transacciones      Transaccion[]
+  transacciones     Transaccion[]
   itemsEstrategicos  EstrategicoItem[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  @@map("users")
+  // @@map eliminado para que coincida con la tabla 'User' en Supabase
 }
 
 // --- MODELO PARA TOKENS DE VERIFICACIÓN ---
@@ -39,7 +37,7 @@ model VerificationToken {
   expires DateTime
 
   @@unique([email, token])
-  @@map("verification_tokens")
+  // @@map eliminado
 }
 
 // --- MODELO DE TRANSACCIONES ---
@@ -47,8 +45,8 @@ model Transaccion {
   id            String   @id @default(uuid())
   nombre        String
   monto         Float
-  tipo          String   // "INGRESO" o "GASTO"
-  clasificacion String   // "VIDA", "ACTIVO", "PASIVO"
+  tipo          String   
+  clasificacion String   
   metodo        String   @default("EFECTIVO")
   fecha         DateTime @default(now())
   completado    Boolean  @default(true)
@@ -60,7 +58,7 @@ model Transaccion {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  @@map("transacciones")
+  // @@map eliminado para que coincida con la tabla 'Transaccion' que ya tiene datos
 }
 
 // --- MODELO PARA EL RESUMEN ESTRATÉGICO ---
@@ -69,12 +67,12 @@ model EstrategicoItem {
   nombre    String
   monto     Float    
   subMonto  Float?   @default(0) 
-  seccion   String   // "ingresos", "gastos", "activos", "pasivos"
+  seccion   String   
   
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
-  @@map("estrategico_items")
+  // @@map eliminado para evitar conflictos de nombres
 }
